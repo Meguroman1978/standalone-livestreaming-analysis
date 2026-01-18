@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ライブコマース分析ツール</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>📊 ライブコマース分析ツール</h1>
+            <p class="subtitle">動画・データ・コメントを統合分析し、売上最大化のインサイトを提供</p>
+        </header>
+
+        <!-- Upload Section -->
+        <section class="upload-section" id="uploadSection">
+            <h2>📤 ステップ1: データアップロード</h2>
+            <p class="section-description">分析に必要な3つのファイルをアップロードしてください</p>
+            
+            <div class="upload-grid">
+                <!-- Video Upload -->
+                <div class="upload-box">
+                    <div class="upload-icon">🎥</div>
+                    <h3>ライブ動画</h3>
+                    <input type="file" id="videoFile" accept=".mp4,.mov,.avi,.mkv" class="file-input">
+                    <label for="videoFile" class="file-label">
+                        <span class="file-text">ファイルを選択</span>
+                    </label>
+                    <p class="file-name" id="videoFileName"></p>
+                    <p class="file-hint">MP4, MOV, AVI, MKV</p>
+                </div>
+
+                <!-- Data Upload -->
+                <div class="upload-box">
+                    <div class="upload-icon">📈</div>
+                    <h3>配信データ</h3>
+                    <input type="file" id="dataFile" accept=".csv,.xlsx,.xls" class="file-input">
+                    <label for="dataFile" class="file-label">
+                        <span class="file-text">ファイルを選択</span>
+                    </label>
+                    <p class="file-name" id="dataFileName"></p>
+                    <p class="file-hint">CSV, Excel (視聴数、いいね、クリック等)</p>
+                </div>
+
+                <!-- Comments Upload -->
+                <div class="upload-box">
+                    <div class="upload-icon">💬</div>
+                    <h3>コメントデータ</h3>
+                    <input type="file" id="commentsFile" accept=".csv,.xlsx,.xls" class="file-input">
+                    <label for="commentsFile" class="file-label">
+                        <span class="file-text">ファイルを選択</span>
+                    </label>
+                    <p class="file-name" id="commentsFileName"></p>
+                    <p class="file-hint">CSV, Excel (タイムスタンプ付き)</p>
+                </div>
+            </div>
+
+            <button id="uploadBtn" class="btn btn-primary" disabled>
+                アップロード開始
+            </button>
+
+            <div id="uploadProgress" class="progress-container" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="uploadProgressBar"></div>
+                </div>
+                <p class="progress-text" id="uploadProgressText">アップロード中...</p>
+            </div>
+        </section>
+
+        <!-- Analysis Section -->
+        <section class="analysis-section" id="analysisSection" style="display: none;">
+            <h2>🔍 ステップ2: 分析実行</h2>
+            <p class="section-description">アップロードが完了しました。分析を開始してください。</p>
+            
+            <button id="analyzeBtn" class="btn btn-success">
+                🚀 分析開始
+            </button>
+
+            <div id="analysisProgress" class="progress-container" style="display: none;">
+                <div class="spinner"></div>
+                <p class="progress-text" id="analysisProgressText">分析中... この処理には数分かかる場合があります</p>
+            </div>
+        </section>
+
+        <!-- Report Section -->
+        <section class="report-section" id="reportSection" style="display: none;">
+            <h2>📋 分析レポート</h2>
+            
+            <!-- Summary Stats -->
+            <div class="stats-grid" id="statsGrid">
+                <!-- Stats will be dynamically inserted here -->
+            </div>
+
+            <!-- Timeline Chart -->
+            <div class="chart-container">
+                <h3>📊 時系列指標推移</h3>
+                <img id="timelineChart" src="" alt="Timeline Chart" class="chart-image">
+            </div>
+
+            <!-- Peak Analysis -->
+            <div class="analysis-container" id="peakAnalysis">
+                <h3>🎯 指標別ピーク分析</h3>
+                <div id="peakAnalysisContent">
+                    <!-- Peak analysis will be dynamically inserted here -->
+                </div>
+            </div>
+
+            <!-- Comment Analysis -->
+            <div class="chart-container">
+                <h3>💬 コメント分類分析</h3>
+                <img id="commentPieChart" src="" alt="Comment Pie Chart" class="chart-image">
+                <div id="commentCategoryDetails" class="category-details">
+                    <!-- Category details will be dynamically inserted here -->
+                </div>
+            </div>
+
+            <!-- Recommendations -->
+            <div class="recommendations-container" id="recommendations">
+                <h3>💡 改善提案</h3>
+                
+                <div class="recommendation-section good-points">
+                    <h4>✅ 良かった点 (Good)</h4>
+                    <ul id="goodPointsList">
+                        <!-- Good points will be dynamically inserted here -->
+                    </ul>
+                </div>
+
+                <div class="recommendation-section improvements">
+                    <h4>📈 改善すべき点 (More)</h4>
+                    <ul id="improvementsList">
+                        <!-- Improvements will be dynamically inserted here -->
+                    </ul>
+                </div>
+
+                <div class="recommendation-section next-actions">
+                    <h4>🎬 次回に向けたアクション</h4>
+                    <ul id="nextActionsList">
+                        <!-- Next actions will be dynamically inserted here -->
+                    </ul>
+                </div>
+            </div>
+
+            <button id="newAnalysisBtn" class="btn btn-secondary">
+                🔄 新しい分析を開始
+            </button>
+        </section>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="error-message" style="display: none;">
+            <span class="error-icon">⚠️</span>
+            <span id="errorText"></span>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
