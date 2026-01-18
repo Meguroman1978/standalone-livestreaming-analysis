@@ -17,17 +17,36 @@ class DataAnalyzer:
             pandas.DataFrame: クレンジング済みデータフレーム
         """
         try:
+            # ファイルパスの確認
+            import os
+            if not os.path.exists(self.data_path):
+                raise Exception(f"ファイルが見つかりません: {self.data_path}")
+            
             # ファイル形式に応じて読み込み
-            if self.data_path.endswith('.csv'):
-                self.df = pd.read_csv(self.data_path, encoding='utf-8-sig')
-            elif self.data_path.endswith(('.xlsx', '.xls')):
+            file_ext = self.data_path.lower().split('.')[-1]
+            
+            if file_ext == 'csv':
+                try:
+                    self.df = pd.read_csv(self.data_path, encoding='utf-8-sig')
+                except UnicodeDecodeError:
+                    # Try different encodings
+                    try:
+                        self.df = pd.read_csv(self.data_path, encoding='shift-jis')
+                    except:
+                        self.df = pd.read_csv(self.data_path, encoding='cp932')
+            elif file_ext in ['xlsx', 'xls']:
                 self.df = pd.read_excel(self.data_path)
             else:
-                raise Exception("未対応のファイル形式です")
+                raise Exception(f"未対応のファイル形式です: .{file_ext} (対応形式: .csv, .xlsx, .xls)")
+            
+            # データが空でないか確認
+            if self.df.empty:
+                raise Exception("ファイルにデータがありません")
             
             # 列名を正規化（よくある列名パターンに対応）
             column_mapping = self._detect_column_names()
-            self.df = self.df.rename(columns=column_mapping)
+            if column_mapping:
+                self.df = self.df.rename(columns=column_mapping)
             
             # 時間列の処理
             if 'time' in self.df.columns:

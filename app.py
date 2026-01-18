@@ -99,26 +99,51 @@ def analyze(session_id):
         data_file = None
         comments_file = None
         
-        for f in files:
-            if any(f.lower().endswith(ext) for ext in app.config['ALLOWED_VIDEO_EXTENSIONS']):
-                video_file = os.path.join(session_folder, f)
-            elif 'data' in f.lower() or '配信' in f:
-                data_file = os.path.join(session_folder, f)
-            elif 'comment' in f.lower() or 'コメント' in f:
-                comments_file = os.path.join(session_folder, f)
+        # Separate files by type
+        video_files = []
+        data_files = []
         
-        # Fallback: assign remaining files
-        if not data_file or not comments_file:
-            data_files = [os.path.join(session_folder, f) for f in files 
-                         if any(f.lower().endswith(ext) for ext in app.config['ALLOWED_DATA_EXTENSIONS'])]
-            if len(data_files) >= 2:
-                if not data_file:
-                    data_file = data_files[0]
-                if not comments_file:
-                    comments_file = data_files[1] if data_files[1] != data_file else (data_files[0] if len(data_files) > 2 else data_files[1])
+        for f in files:
+            full_path = os.path.join(session_folder, f)
+            # Check if it's a video file
+            if any(f.lower().endswith('.' + ext) for ext in app.config['ALLOWED_VIDEO_EXTENSIONS']):
+                video_files.append(full_path)
+            # Check if it's a data file (CSV/Excel)
+            elif any(f.lower().endswith('.' + ext) for ext in app.config['ALLOWED_DATA_EXTENSIONS']):
+                data_files.append(full_path)
+        
+        # Assign video file
+        if video_files:
+            video_file = video_files[0]
+        
+        # Assign data and comments files
+        # First try to detect by filename
+        for df in data_files:
+            filename = os.path.basename(df).lower()
+            if 'data' in filename or '配信' in filename or 'distribution' in filename:
+                data_file = df
+            elif 'comment' in filename or 'コメント' in filename or 'chat' in filename:
+                comments_file = df
+        
+        # If still not assigned, use order (first as data, second as comments)
+        if len(data_files) >= 2:
+            if not data_file:
+                data_file = data_files[0]
+            if not comments_file:
+                # Find the file that's not data_file
+                for df in data_files:
+                    if df != data_file:
+                        comments_file = df
+                        break
+        elif len(data_files) == 1:
+            # Only one data file - could be either data or comments
+            # Try to determine by content or just treat as data
+            if not data_file and not comments_file:
+                return jsonify({'error': '配信データとコメントデータの両方が必要です'}), 400
         
         if not video_file or not data_file or not comments_file:
-            return jsonify({'error': 'アップロードされたファイルが不完全です'}), 400
+            error_msg = f'アップロードされたファイルが不完全です (動画: {bool(video_file)}, データ: {bool(data_file)}, コメント: {bool(comments_file)})'
+            return jsonify({'error': error_msg}), 400
         
         # Initialize analyzers
         video_analyzer = VideoAnalyzer(video_file, session_folder)
