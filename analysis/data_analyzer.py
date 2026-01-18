@@ -82,16 +82,24 @@ class DataAnalyzer:
         columns = self.df.columns
         
         # 時間関連
-        time_patterns = ['時間', '時刻', 'time', 'timestamp', '分', 'minute']
+        time_patterns = ['時間', '時刻', 'time', 'timestamp', '分', 'minute', '経過']
         for col in columns:
-            if any(pattern in str(col).lower() for pattern in time_patterns):
-                mapping[col] = 'time' if 'time' in str(col).lower() or '時' in str(col) else 'minute'
+            col_str = str(col)
+            col_lower = col_str.lower()
+            if any(pattern in col_lower or pattern in col_str for pattern in time_patterns):
+                # 「経過時間 (分)」のような列は minute にマッピング
+                if '分' in col_str or 'minute' in col_lower:
+                    mapping[col] = 'minute'
+                elif 'time' in col_lower or '時' in col_str:
+                    mapping[col] = 'time'
                 break
         
         # 視聴者数
-        viewer_patterns = ['視聴', 'viewer', 'watch', '同時', 'concurrent']
+        viewer_patterns = ['視聴', 'viewer', 'watch', '同時', 'concurrent', 'ユーザー']
         for col in columns:
-            if any(pattern in str(col).lower() for pattern in viewer_patterns):
+            col_str = str(col)
+            col_lower = col_str.lower()
+            if any(pattern in col_lower or pattern in col_str for pattern in viewer_patterns):
                 mapping[col] = 'viewers'
                 break
         
@@ -105,14 +113,18 @@ class DataAnalyzer:
         # コメント数
         comment_patterns = ['コメント', 'comment', 'chat', 'チャット']
         for col in columns:
-            if any(pattern in str(col).lower() for pattern in comment_patterns):
+            col_str = str(col)
+            col_lower = col_str.lower()
+            if any(pattern in col_lower or pattern in col_str for pattern in comment_patterns):
                 mapping[col] = 'comments'
                 break
         
         # クリック数
         click_patterns = ['クリック', 'click', '商品', 'product']
         for col in columns:
-            if any(pattern in str(col).lower() for pattern in click_patterns):
+            col_str = str(col)
+            col_lower = col_str.lower()
+            if any(pattern in col_lower or pattern in col_str for pattern in click_patterns):
                 mapping[col] = 'clicks'
                 break
         

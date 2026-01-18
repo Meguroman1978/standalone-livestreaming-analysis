@@ -61,7 +61,10 @@ class CommentAnalyzer:
                 raise Exception("有効なコメントデータがありません")
             
             # 時間列の処理
-            if 'time' in self.df.columns:
+            if 'elapsed_time' in self.df.columns:
+                # elapsed_timeは秒数なので分に変換
+                self.df['minute'] = (self.df['elapsed_time'] / 60).astype(int)
+            elif 'time' in self.df.columns:
                 self.df['time'] = pd.to_datetime(self.df['time'], errors='coerce')
             elif 'minute' in self.df.columns:
                 self.df['minute'] = pd.to_numeric(self.df['minute'], errors='coerce')
@@ -81,18 +84,45 @@ class CommentAnalyzer:
         mapping = {}
         columns = self.df.columns
         
-        # コメント本文
-        comment_patterns = ['コメント', 'comment', 'message', 'text', '本文', 'content']
+        # コメント本文（より具体的なパターンを優先）
+        comment_patterns = [
+            ('original_text', 10),  # 最優先
+            ('original', 9),
+            ('text', 8),
+            ('コメント', 7),
+            ('comment', 6),
+            ('message', 5),
+            ('本文', 4),
+            ('content', 3)
+        ]
+        
+        best_match = None
+        best_priority = -1
+        
         for col in columns:
-            if any(pattern in str(col).lower() for pattern in comment_patterns):
-                mapping[col] = 'comment'
-                break
+            col_lower = str(col).lower()
+            for pattern, priority in comment_patterns:
+                if pattern in col_lower:
+                    if priority > best_priority:
+                        best_match = col
+                        best_priority = priority
+                        break
+        
+        if best_match:
+            mapping[best_match] = 'comment'
         
         # 時間
-        time_patterns = ['時間', '時刻', 'time', 'timestamp', '分', 'minute']
+        time_patterns = ['時間', '時刻', 'time', 'timestamp', '分', 'minute', 'elapsed']
         for col in columns:
-            if any(pattern in str(col).lower() for pattern in time_patterns):
-                mapping[col] = 'time' if 'time' in str(col).lower() or '時刻' in str(col) else 'minute'
+            col_lower = str(col).lower()
+            if any(pattern in col_lower for pattern in time_patterns):
+                # elapsed_timeは秒数なので分に変換する必要がある
+                if 'elapsed' in col_lower:
+                    mapping[col] = 'elapsed_time'
+                elif 'time' in col_lower or '時' in str(col):
+                    mapping[col] = 'time'
+                else:
+                    mapping[col] = 'minute'
                 break
         
         # ユーザー名
