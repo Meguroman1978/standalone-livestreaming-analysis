@@ -116,34 +116,94 @@ def analyze(session_id):
         if video_files:
             video_file = video_files[0]
         
-        # Assign data and comments files
-        # First try to detect by filename
-        for df in data_files:
-            filename = os.path.basename(df).lower()
-            if 'data' in filename or '配信' in filename or 'distribution' in filename:
-                data_file = df
-            elif 'comment' in filename or 'コメント' in filename or 'chat' in filename:
-                comments_file = df
+        # Detect data and comments files by content (column structure)
+        if len(data_files) < 2:
+            return jsonify({'error': '配信データ（分チャート）とコメントデータの両方が必要です。2つのCSV/Excelファイルをアップロードしてください。'}), 400
         
-        # If still not assigned, use order (first as data, second as comments)
-        if len(data_files) >= 2:
-            if not data_file:
-                data_file = data_files[0]
-            if not comments_file:
-                # Find the file that's not data_file
-                for df in data_files:
-                    if df != data_file:
-                        comments_file = df
-                        break
-        elif len(data_files) == 1:
-            # Only one data file - could be either data or comments
-            # Try to determine by content or just treat as data
-            if not data_file and not comments_file:
-                return jsonify({'error': '配信データとコメントデータの両方が必要です'}), 400
+        # Analyze each file's column structure to determine which is which
+        import pandas as pd
+        
+        def detect_file_type(file_path):
+            """
+            ファイルの内容を読み込んで、配信データかコメントデータかを判定
+            Returns: 'streaming_data', 'comment_data', or 'unknown'
+            """
+            try:
+                # Read file
+                if file_path.endswith('.csv'):
+                    df = pd.read_csv(file_path, nrows=5, encoding='utf-8-sig')
+                else:
+                    df = pd.read_excel(file_path, nrows=5)
+                
+                columns = [str(col).lower() for col in df.columns]
+                
+                # Check for streaming data patterns (時間 + 複数の数値指標)
+                has_time = any(pattern in ' '.join(columns) for pattern in ['時間', '分', 'minute', 'time', '経過'])
+                has_viewers = any(pattern in ' '.join(columns) for pattern in ['視聴', 'viewer', '同時', 'ユーザー'])
+                has_metrics = any(pattern in ' '.join(columns) for pattern in ['いいね', 'like', 'クリック', 'click', 'チャット', 'chat'])
+                
+                # Check for comment data patterns (コメント本文 + 時間)
+                has_comment_text = any(pattern in ' '.join(columns) for pattern in ['original_text', 'comment', 'text', 'コメント', 'message'])
+                has_user = any(pattern in ' '.join(columns) for pattern in ['user', 'username', 'ユーザー'])
+                
+                # Determine file type
+                if has_comment_text and (has_time or has_user):
+                    return 'comment_data'
+                elif has_time and (has_viewers or has_metrics):
+                    return 'streaming_data'
+                else:
+                    return 'unknown'
+                    
+            except Exception as e:
+                print(f"Error detecting file type for {file_path}: {str(e)}")
+                return 'unknown'
+        
+        # Detect file types
+        file_types = {}
+        for df_path in data_files:
+            file_type = detect_file_type(df_path)
+            file_types[df_path] = file_type
+        
+        # Assign files based on detected types
+        for df_path, file_type in file_types.items():
+            if file_type == 'streaming_data' and not data_file:
+                data_file = df_path
+            elif file_type == 'comment_data' and not comments_file:
+                comments_file = df_path
+        
+        # If still not assigned, try filename patterns as fallback
+        if not data_file or not comments_file:
+            for df_path in data_files:
+                filename = os.path.basename(df_path).lower()
+                if not data_file and ('data' in filename or '配信' in filename or 'chart' in filename or 'チャート' in filename):
+                    data_file = df_path
+                elif not comments_file and ('comment' in filename or 'コメント' in filename or 'chat' in filename):
+                    comments_file = df_path
+        
+        # Last resort: use order if still not assigned
+        if not data_file and not comments_file and len(data_files) >= 2:
+            data_file = data_files[0]
+            comments_file = data_files[1]
+        elif not data_file and comments_file:
+            for df_path in data_files:
+                if df_path != comments_file:
+                    data_file = df_path
+                    break
+        elif data_file and not comments_file:
+            for df_path in data_files:
+                if df_path != data_file:
+                    comments_file = df_path
+                    break
         
         if not video_file or not data_file or not comments_file:
-            error_msg = f'アップロードされたファイルが不完全です (動画: {bool(video_file)}, データ: {bool(data_file)}, コメント: {bool(comments_file)})'
-            return jsonify({'error': error_msg}), 400
+            error_details = {
+                'video': bool(video_file),
+                'data': bool(data_file),
+                'comments': bool(comments_file),
+                'detected_types': file_types
+            }
+            error_msg = f'ファイルの自動判別に失敗しました。配信データ: {bool(data_file)}, コメントデータ: {bool(comments_file)}'
+            return jsonify({'error': error_msg, 'details': error_details}), 400
         
         # Initialize analyzers
         video_analyzer = VideoAnalyzer(video_file, session_folder)
