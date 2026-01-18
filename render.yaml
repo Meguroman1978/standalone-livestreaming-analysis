@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: live-commerce-analysis
+    runtime: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --timeout 600 --workers 2"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: PORT
+        value: 10000
+    plan: free
+    maxShutdownDelaySeconds: 30
+    autoDeploy: true
