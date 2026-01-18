@@ -6,7 +6,7 @@ import json
 import os
 from datetime import datetime
 import numpy as np
-from .pptx_generator import PowerPointGenerator
+from .pptx_generator_enhanced import EnhancedPowerPointGenerator
 
 # 日本語フォント設定
 plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial', 'sans-serif']
@@ -71,14 +71,15 @@ class ReportGenerator:
             with open(report_path, 'w', encoding='utf-8') as f:
                 json.dump(report_data, f, ensure_ascii=False, indent=2)
             
-            # 6. PowerPointレポート生成
+            # 6. PowerPointレポート生成（correlationsを渡す）
             pptx_path = self._generate_powerpoint_report(
                 summary_stats,
                 chart_path,
                 pie_chart_path,
                 comment_analysis,
                 recommendations,
-                len(video_events)
+                len(video_events),
+                correlations  # ピーク情報を渡す
             )
             report_data['pptx_file'] = os.path.basename(pptx_path) if pptx_path else None
             
@@ -311,33 +312,73 @@ class ReportGenerator:
         
         return recommendations
     
-    def _generate_powerpoint_report(self, summary_stats, chart_path, pie_chart_path, comment_analysis, recommendations, video_duration):
+    def _generate_powerpoint_report(self, summary_stats, chart_path, pie_chart_path, comment_analysis, recommendations, video_duration, correlations):
         """
-        PowerPointレポートを生成
+        PowerPointレポートを生成（12スライド版）
         
         Returns:
             str: PPTXファイルパス
         """
         try:
-            # PowerPointGenerator初期化
-            pptx_gen = PowerPointGenerator(self.output_folder)
+            # 強化版PowerPointGenerator初期化
+            pptx_gen = EnhancedPowerPointGenerator(self.output_folder)
             
-            # 1. カバースライド
-            pptx_gen.create_cover_slide(summary_stats, video_duration)
+            # ピーク分析データの準備（correlationsを使用）
+            peak_info = correlations  # correlationsがそのままpeak_info
             
-            # 2. KPIサマリースライド
-            pptx_gen.create_kpi_summary_slide(summary_stats)
-            
-            # 3. 時系列グラフスライド
+            # フルパスの準備
             timeline_chart_full_path = os.path.join(self.output_folder, chart_path)
-            pptx_gen.create_chart_slide("時系列指標推移", timeline_chart_full_path)
-            
-            # 4. コメント分析スライド
             pie_chart_full_path = os.path.join(self.output_folder, pie_chart_path)
-            pptx_gen.create_comment_analysis_slide(comment_analysis, pie_chart_full_path)
             
-            # 5. 改善提案スライド
-            pptx_gen.create_recommendations_slide(recommendations)
+            print("[INFO] 12スライドのPowerPointレポートを生成中...")
+            
+            # 1. カバーページ
+            pptx_gen.create_slide_1_cover(summary_stats, video_duration)
+            print("[INFO]   ✓ スライド1: カバーページ")
+            
+            # 2. 主要KPIサマリー
+            pptx_gen.create_slide_2_kpi_summary(summary_stats, peak_info)
+            print("[INFO]   ✓ スライド2: 主要KPIサマリー")
+            
+            # 3. 時系列(1) 同時視聴ユーザー数
+            pptx_gen.create_slide_3_timeline_viewers(timeline_chart_full_path, peak_info)
+            print("[INFO]   ✓ スライド3: 時系列(1) 視聴者数")
+            
+            # 4. 時系列(2) 商品クリック数
+            pptx_gen.create_slide_4_timeline_clicks(timeline_chart_full_path, peak_info)
+            print("[INFO]   ✓ スライド4: 時系列(2) クリック数")
+            
+            # 5. 時系列(3) いいね数とチャット数
+            pptx_gen.create_slide_5_timeline_engagement(timeline_chart_full_path, peak_info)
+            print("[INFO]   ✓ スライド5: 時系列(3) エンゲージメント")
+            
+            # 6. 単一指標分析｜同時視聴ユーザー数
+            pptx_gen.create_slide_6_single_metric_viewers(peak_info, recommendations)
+            print("[INFO]   ✓ スライド6: 単一指標分析(視聴者)")
+            
+            # 7. 単一指標分析｜商品クリック数
+            pptx_gen.create_slide_7_single_metric_clicks(peak_info, recommendations)
+            print("[INFO]   ✓ スライド7: 単一指標分析(クリック)")
+            
+            # 8. 単一指標分析｜チャット＆いいね
+            pptx_gen.create_slide_8_single_metric_engagement(peak_info, recommendations)
+            print("[INFO]   ✓ スライド8: 単一指標分析(エンゲージメント)")
+            
+            # 9. 複数指標分析｜視聴×クリックの相関
+            pptx_gen.create_slide_9_multi_metric_correlation(summary_stats, peak_info, recommendations)
+            print("[INFO]   ✓ スライド9: 複数指標分析(相関)")
+            
+            # 10. コメント定量分析
+            pptx_gen.create_slide_10_comment_analysis(comment_analysis, pie_chart_full_path)
+            print("[INFO]   ✓ スライド10: コメント定量分析")
+            
+            # 11. 総合考察｜成功要因と課題
+            pptx_gen.create_slide_11_overall_insights(recommendations, summary_stats)
+            print("[INFO]   ✓ スライド11: 総合考察")
+            
+            # 12. アクションプラン（次回配信）
+            pptx_gen.create_slide_12_action_plan(recommendations)
+            print("[INFO]   ✓ スライド12: アクションプラン")
             
             # 保存
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -345,6 +386,7 @@ class ReportGenerator:
             pptx_path = pptx_gen.save(filename)
             
             print(f"[INFO] PowerPointレポート生成完了: {pptx_path}")
+            print(f"[INFO] 総スライド数: 12")
             return pptx_path
             
         except Exception as e:
@@ -352,3 +394,19 @@ class ReportGenerator:
             import traceback
             traceback.print_exc()
             return None
+    
+    def _prepare_peak_info_for_pptx(self, recommendations):
+        """PPTXスライド生成用にピーク情報を準備"""
+        # recommendations から peak_analysis を抽出
+        # （実際にはgenerate_report内でcorrelationsを渡す方が良いが、
+        #  後方互換性のためrecommendationsに含まれていると仮定）
+        peak_info = {
+            'viewers': [],
+            'clicks': [],
+            'likes': [],
+            'comments': []
+        }
+        
+        # recommendations内にpeak情報があれば使用、なければ空
+        # （注: 本来はcorrelationsを直接渡すべきだが、現在の実装に合わせる）
+        return peak_info
