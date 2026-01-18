@@ -62,10 +62,26 @@ def upload_files():
         session_folder = os.path.join(app.config['UPLOAD_FOLDER'], session_id)
         os.makedirs(session_folder, exist_ok=True)
         
-        # Save files
-        video_filename = secure_filename(video_file.filename)
-        data_filename = secure_filename(data_file.filename)
-        comments_filename = secure_filename(comments_file.filename)
+        # Save files with proper extension handling
+        def safe_filename(original_filename):
+            """
+            ファイル名を安全にしつつ、拡張子を確実に保持
+            """
+            # 拡張子を取得
+            if '.' in original_filename:
+                name, ext = original_filename.rsplit('.', 1)
+                # secure_filenameを適用
+                safe_name = secure_filename(name)
+                # 拡張子が失われた場合のフォールバック
+                if not safe_name:
+                    safe_name = 'file'
+                return f"{safe_name}.{ext.lower()}"
+            else:
+                return secure_filename(original_filename) or 'file'
+        
+        video_filename = safe_filename(video_file.filename)
+        data_filename = safe_filename(data_file.filename)
+        comments_filename = safe_filename(comments_file.filename)
         
         video_path = os.path.join(session_folder, video_filename)
         data_path = os.path.join(session_folder, data_filename)
@@ -103,14 +119,25 @@ def analyze(session_id):
         video_files = []
         data_files = []
         
+        print(f"[DEBUG] Session folder: {session_folder}")
+        print(f"[DEBUG] Files in folder: {files}")
+        
         for f in files:
             full_path = os.path.join(session_folder, f)
+            print(f"[DEBUG] Checking file: {f}")
             # Check if it's a video file
             if any(f.lower().endswith('.' + ext) for ext in app.config['ALLOWED_VIDEO_EXTENSIONS']):
                 video_files.append(full_path)
+                print(f"[DEBUG] -> Video file")
             # Check if it's a data file (CSV/Excel)
             elif any(f.lower().endswith('.' + ext) for ext in app.config['ALLOWED_DATA_EXTENSIONS']):
                 data_files.append(full_path)
+                print(f"[DEBUG] -> Data file")
+            else:
+                print(f"[DEBUG] -> Ignored (no matching extension)")
+        
+        print(f"[DEBUG] Video files: {video_files}")
+        print(f"[DEBUG] Data files: {data_files}")
         
         # Assign video file
         if video_files:
