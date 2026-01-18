@@ -69,15 +69,19 @@
                         <div class="step-item">
                             <div class="step-number">2</div>
                             <div class="step-content">
-                                <h4>分析実行</h4>
-                                <p>「🚀 分析開始」ボタンをクリック（処理時間: 3〜5分）</p>
+                                <h4>分析実行とレポートダウンロード</h4>
+                                <p>「🚀 分析開始」ボタンをクリック（処理時間: 3〜5分）<br>
+                                完了後、PowerPointレポートをダウンロード</p>
                             </div>
                         </div>
                         <div class="step-item">
                             <div class="step-number">3</div>
                             <div class="step-content">
-                                <h4>レポートダウンロード</h4>
-                                <p>分析完了後、「📥 PowerPointレポートをダウンロード」ボタンからレポートを取得</p>
+                                <h4>Genspark AIスライド生成（オプション）</h4>
+                                <p>より高品質なスライドが必要な場合：<br>
+                                ① 画面に表示される「Genspark AIスライド生成用プロンプト」をコピー<br>
+                                ② Slack経由でGensparkユーザーに転送<br>
+                                ③ Gensparkユーザーがデザイン性の高いスライドを作成</p>
                             </div>
                         </div>
                     </div>
@@ -184,61 +188,39 @@
             </div>
         </section>
 
-        <!-- Report Section -->
+        <!-- Results Section (Download + Genspark Prompt) -->
         <section class="report-section" id="reportSection" style="display: none;">
-            <h2>📋 分析レポート</h2>
+            <h2>✅ 分析完了</h2>
+            <p class="section-description">レポートが生成されました。以下からダウンロードしてください。</p>
             
-            <!-- Summary Stats -->
-            <div class="stats-grid" id="statsGrid">
-                <!-- Stats will be dynamically inserted here -->
+            <!-- Download Button -->
+            <div class="download-container">
+                <button id="downloadPptxBtn" class="btn btn-download">
+                    📥 PowerPointレポートをダウンロード
+                </button>
             </div>
 
-            <!-- Timeline Chart -->
-            <div class="chart-container">
-                <h3>📊 時系列指標推移</h3>
-                <img id="timelineChart" src="" alt="Timeline Chart" class="chart-image">
-            </div>
-
-            <!-- Peak Analysis -->
-            <div class="analysis-container" id="peakAnalysis">
-                <h3>🎯 指標別ピーク分析</h3>
-                <div id="peakAnalysisContent">
-                    <!-- Peak analysis will be dynamically inserted here -->
-                </div>
-            </div>
-
-            <!-- Comment Analysis -->
-            <div class="chart-container">
-                <h3>💬 コメント分類分析</h3>
-                <img id="commentPieChart" src="" alt="Comment Pie Chart" class="chart-image">
-                <div id="commentCategoryDetails" class="category-details">
-                    <!-- Category details will be dynamically inserted here -->
-                </div>
-            </div>
-
-            <!-- Recommendations -->
-            <div class="recommendations-container" id="recommendations">
-                <h3>💡 改善提案</h3>
+            <!-- Genspark AI Prompt Section -->
+            <div class="genspark-prompt-container">
+                <h3>🎨 Genspark AIスライド生成用プロンプト</h3>
+                <p class="prompt-description">
+                    以下のプロンプトをコピーして、Genspark AIスライド機能で使用してください。<br>
+                    より高品質でデザイン性の高いスライドを生成できます。
+                </p>
                 
-                <div class="recommendation-section good-points">
-                    <h4>✅ 良かった点 (Good)</h4>
-                    <ul id="goodPointsList">
-                        <!-- Good points will be dynamically inserted here -->
-                    </ul>
+                <div class="prompt-box">
+                    <button id="copyPromptBtn" class="btn btn-copy">📋 コピー</button>
+                    <pre id="gensparkPrompt" class="prompt-text"><!-- Genspark prompt will be inserted here --></pre>
                 </div>
-
-                <div class="recommendation-section improvements">
-                    <h4>📈 改善すべき点 (More)</h4>
-                    <ul id="improvementsList">
-                        <!-- Improvements will be dynamically inserted here -->
-                    </ul>
-                </div>
-
-                <div class="recommendation-section next-actions">
-                    <h4>🎬 次回に向けたアクション</h4>
-                    <ul id="nextActionsList">
-                        <!-- Next actions will be dynamically inserted here -->
-                    </ul>
+                
+                <div class="prompt-guide">
+                    <h4>📤 次のステップ</h4>
+                    <ol>
+                        <li>上記のプロンプトを「コピー」ボタンでコピーします</li>
+                        <li>コピーしたプロンプトをSlack経由でGensparkユーザーに転送してください</li>
+                        <li>Gensparkユーザーがスライド加工を行います</li>
+                        <li>完成したスライドが納品されます</li>
+                    </ol>
                 </div>
             </div>
 

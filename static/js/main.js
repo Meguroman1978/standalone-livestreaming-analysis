@@ -154,64 +154,51 @@ analyzeBtn.addEventListener('click', async () => {
 
 // Display report
 function displayReport(reportData, sessionId) {
-    // Display summary stats
-    displaySummaryStats(reportData.summary_stats);
-    
-    // Display charts
-    displayCharts(reportData.charts, sessionId);
-    
-    // Display peak analysis
-    displayPeakAnalysis(reportData.peak_analysis);
-    
-    // Display comment analysis
-    displayCommentAnalysis(reportData.comment_analysis);
-    
-    // Display recommendations
-    displayRecommendations(reportData.recommendations);
-    
-    // Add download button if PPTX is available
+    // Show download button
     if (reportData.pptx_file) {
-        addDownloadButton(sessionId, reportData.pptx_file);
+        setupDownloadButton(sessionId, reportData.pptx_file);
+    }
+    
+    // Display Genspark prompt
+    if (reportData.genspark_prompt) {
+        displayGensparkPrompt(reportData.genspark_prompt);
     }
 }
 
-// Add download button for PowerPoint report
+// Setup download button
+function setupDownloadButton(sessionId, pptxFilename) {
+    const downloadBtn = document.getElementById('downloadPptxBtn');
+    downloadBtn.onclick = () => {
+        window.location.href = `/api/download/${sessionId}`;
+    };
+}
+
+// Display Genspark AI prompt
+function displayGensparkPrompt(prompt) {
+    const promptElement = document.getElementById('gensparkPrompt');
+    promptElement.textContent = prompt;
+    
+    // Setup copy button
+    const copyBtn = document.getElementById('copyPromptBtn');
+    copyBtn.onclick = () => {
+        navigator.clipboard.writeText(prompt).then(() => {
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = '✅ コピーしました！';
+            copyBtn.style.background = '#28a745';
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+                copyBtn.style.background = '#667eea';
+            }, 2000);
+        }).catch(err => {
+            alert('コピーに失敗しました。手動でコピーしてください。');
+            console.error('Copy failed:', err);
+        });
+    };
+}
+
+// Add download button for PowerPoint report (legacy, kept for compatibility)
 function addDownloadButton(sessionId, pptxFilename) {
-    const reportActionsDiv = document.getElementById('reportActions');
-    if (!reportActionsDiv) {
-        // Create report actions section if it doesn't exist
-        const section = document.getElementById('reportSection');
-        const actionsDiv = document.createElement('div');
-        actionsDiv.id = 'reportActions';
-        actionsDiv.className = 'report-actions';
-        actionsDiv.style.cssText = 'text-align: center; margin: 30px 0; padding: 20px;';
-        section.insertBefore(actionsDiv, section.firstChild);
-    }
-    
-    const reportActions = document.getElementById('reportActions');
-    reportActions.innerHTML = `
-        <div class="download-section">
-            <h3 style="color: #667eea; margin-bottom: 15px;">📊 スライドレポートをダウンロード</h3>
-            <p style="color: #666; margin-bottom: 20px;">分析結果をPowerPoint形式でダウンロードできます</p>
-            <a href="/api/download/${sessionId}" 
-               class="btn btn-primary download-btn" 
-               style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 50px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: all 0.3s ease;">
-                <span style="margin-right: 10px;">📥</span> PowerPointレポートをダウンロード
-            </a>
-            <p style="color: #999; font-size: 14px; margin-top: 15px;">ファイル名: ${pptxFilename}</p>
-        </div>
-    `;
-    
-    // Add hover effect via JavaScript
-    const downloadBtn = reportActions.querySelector('.download-btn');
-    downloadBtn.addEventListener('mouseenter', () => {
-        downloadBtn.style.transform = 'translateY(-3px)';
-        downloadBtn.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
-    });
-    downloadBtn.addEventListener('mouseleave', () => {
-        downloadBtn.style.transform = 'translateY(0)';
-        downloadBtn.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
-    });
+    setupDownloadButton(sessionId, pptxFilename);
 }
 
 // Display summary statistics

@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 import numpy as np
 from .pptx_generator_enhanced import EnhancedPowerPointGenerator
+from .genspark_prompt_generator import GensparkPromptGenerator
 
 # 日本語フォント設定
 plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial', 'sans-serif']
@@ -82,6 +83,18 @@ class ReportGenerator:
                 correlations  # ピーク情報を渡す
             )
             report_data['pptx_file'] = os.path.basename(pptx_path) if pptx_path else None
+            
+            # 7. Genspark AIスライド生成用プロンプト生成
+            genspark_generator = GensparkPromptGenerator()
+            genspark_prompt = genspark_generator.generate_prompt(
+                data_df,
+                comments_df,
+                summary_stats,
+                peak_analysis,
+                comment_analysis,
+                recommendations
+            )
+            report_data['genspark_prompt'] = genspark_prompt
             
             return report_data
             
