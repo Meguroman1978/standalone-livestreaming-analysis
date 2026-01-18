@@ -136,7 +136,7 @@ class CommentAnalyzer:
     
     def classify_comments(self, comments_df=None):
         """
-        コメントを6つのカテゴリに分類
+        コメントを6つのカテゴリに分類（タイムスタンプ付き）
         - 質問
         - 驚き
         - ワクワク・期待
@@ -148,7 +148,7 @@ class CommentAnalyzer:
             comments_df (pandas.DataFrame, optional): コメントデータフレーム
         
         Returns:
-            dict: 分類結果
+            dict: 分類結果（タイムスタンプと具体的なコメント内容を含む）
         """
         if comments_df is None:
             comments_df = self.df
@@ -156,7 +156,7 @@ class CommentAnalyzer:
         if comments_df is None:
             raise Exception("コメントデータが読み込まれていません")
         
-        # 分類カテゴリの定義
+        # 分類カテゴリの定義（タイムスタンプ付き）
         categories = {
             '質問': [],
             '驚き': [],
@@ -177,39 +177,72 @@ class CommentAnalyzer:
             comment = str(row['comment'])
             classified = False
             
+            # タイムスタンプ情報を取得
+            timestamp_info = self._get_timestamp_info(row)
+            
+            # コメント情報を構造化
+            comment_data = {
+                'text': comment,
+                'timestamp': timestamp_info,
+                'user': row.get('user', '不明') if 'user' in row else '不明'
+            }
+            
             # 購入意志（最優先）
             if any(re.search(pattern, comment) for pattern in purchase_patterns):
-                categories['購入意志'].append(comment)
+                categories['購入意志'].append(comment_data)
                 classified = True
             # 質問
             elif any(re.search(pattern, comment) for pattern in question_patterns):
-                categories['質問'].append(comment)
+                categories['質問'].append(comment_data)
                 classified = True
             # 驚き
             elif any(re.search(pattern, comment) for pattern in surprise_patterns):
-                categories['驚き'].append(comment)
+                categories['驚き'].append(comment_data)
                 classified = True
             # ワクワク・期待
             elif any(re.search(pattern, comment) for pattern in excitement_patterns):
-                categories['ワクワク・期待'].append(comment)
+                categories['ワクワク・期待'].append(comment_data)
                 classified = True
             # 挨拶
             elif any(re.search(pattern, comment) for pattern in greeting_patterns):
-                categories['挨拶'].append(comment)
+                categories['挨拶'].append(comment_data)
                 classified = True
             
             # その他
             if not classified:
-                categories['その他'].append(comment)
+                categories['その他'].append(comment_data)
         
         # 集計結果
         result = {
             'categories': {k: len(v) for k, v in categories.items()},
-            'examples': {k: v[:5] for k, v in categories.items()},  # 各カテゴリの例を5件まで
+            'examples': {k: v[:10] for k, v in categories.items()},  # 各カテゴリの例を10件まで
+            'detailed_comments': categories,  # 全コメント（タイムスタンプ付き）
             'total': len(comments_df)
         }
         
         return result
+    
+    def _get_timestamp_info(self, row):
+        """
+        タイムスタンプ情報を取得してフォーマット
+        
+        Args:
+            row: DataFrameの行
+        
+        Returns:
+            str: フォーマットされたタイムスタンプ（例：「2分30秒」）
+        """
+        if 'elapsed_time' in row.index and pd.notna(row['elapsed_time']):
+            seconds = int(row['elapsed_time'])
+            minutes = seconds // 60
+            secs = seconds % 60
+            return f"{minutes}分{secs:02d}秒"
+        elif 'minute' in row.index and pd.notna(row['minute']):
+            return f"{int(row['minute'])}分"
+        elif 'time' in row.index and pd.notna(row['time']):
+            return str(row['time'])
+        else:
+            return "時刻不明"
     
     def analyze_comment_timing(self):
         """

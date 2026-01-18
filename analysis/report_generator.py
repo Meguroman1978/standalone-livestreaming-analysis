@@ -43,8 +43,8 @@ class ReportGenerator:
             # 3. サマリー統計
             summary_stats = self._calculate_summary_stats(data_df, comments_df)
             
-            # 4. ピーク分析
-            peak_analysis = self._analyze_peaks(correlations, video_events)
+            # 4. ピーク分析（詳細データとコメントを含む）
+            peak_analysis = self._analyze_peaks(correlations, video_events, data_df, comments_df)
             
             # 5. 改善提案の生成
             recommendations = self._generate_recommendations(
@@ -80,7 +80,8 @@ class ReportGenerator:
                 comment_analysis,
                 recommendations,
                 len(video_events),
-                correlations  # ピーク情報を渡す
+                correlations,  # ピーク情報を渡す
+                peak_analysis  # 詳細なピーク分析データも渡す
             )
             report_data['pptx_file'] = os.path.basename(pptx_path) if pptx_path else None
             
@@ -248,12 +249,18 @@ class ReportGenerator:
         
         return stats
     
-    def _analyze_peaks(self, correlations, video_events):
+    def _analyze_peaks(self, correlations, video_events, data_df, comments_df):
         """
-        ピーク分析を実施（演者の行動推測を含む）
+        ピーク分析を実施（演者の行動推測と具体的なコメントを含む）
+        
+        Args:
+            correlations: ピーク情報
+            video_events: 動画イベント
+            data_df: 配信データ
+            comments_df: コメントデータ
         
         Returns:
-            dict: ピーク分析結果
+            dict: ピーク分析結果（具体的なコメントとタイムスタンプ付き）
         """
         peak_analysis = {}
         
@@ -268,17 +275,110 @@ class ReportGenerator:
                     # 演者の行動を推測
                     likely_behavior = self._infer_presenter_behavior(metric, minute, peak, event)
                     
+                    # その時刻の具体的な配信データを取得
+                    minute_data = self._get_minute_data(minute, data_df)
+                    
+                    # その時刻付近のコメントを取得（前後1分）
+                    related_comments = self._get_comments_near_time(minute, comments_df)
+                    
                     analysis = {
                         'minute': minute,
                         'value': peak['value'],
                         'increase': peak['increase'],
                         'event_description': event['description'] if event else 'イベント情報なし',
                         'inferred_context': event.get('inferred_context') if event else None,
-                        'likely_presenter_action': likely_behavior
+                        'likely_presenter_action': likely_behavior,
+                        'minute_data': minute_data,  # 具体的な数値データ
+                        'related_comments': related_comments  # 関連するコメント（タイムスタンプ付き）
                     }
                     peak_analysis[metric].append(analysis)
         
         return peak_analysis
+    
+    def _get_minute_data(self, minute, data_df):
+        """
+        指定した分の具体的なデータを取得
+        
+        Args:
+            minute (int): 分
+            data_df: 配信データ
+        
+        Returns:
+            dict: その分のデータ
+        """
+        try:
+            if 'minute' in data_df.columns:
+                row = data_df[data_df['minute'] == minute]
+                if not row.empty:
+                    row = row.iloc[0]
+                    return {
+                        'viewers': int(row.get('viewers', 0)) if pd.notna(row.get('viewers')) else 0,
+                        'likes': int(row.get('likes', 0)) if pd.notna(row.get('likes')) else 0,
+                        'comments': int(row.get('comments', 0)) if pd.notna(row.get('comments')) else 0,
+                        'clicks': int(row.get('clicks', 0)) if pd.notna(row.get('clicks')) else 0
+                    }
+        except Exception as e:
+            print(f"分データ取得エラー: {str(e)}")
+        
+        return {'viewers': 0, 'likes': 0, 'comments': 0, 'clicks': 0}
+    
+    def _get_comments_near_time(self, minute, comments_df, window=1):
+        """
+        指定した時刻付近のコメントを取得
+        
+        Args:
+            minute (int): 分
+            comments_df: コメントデータ
+            window (int): 前後何分を取得するか
+        
+        Returns:
+            list: コメントリスト（タイムスタンプ付き）
+        """
+        try:
+            if comments_df is None or comments_df.empty:
+                return []
+            
+            comments_list = []
+            
+            # elapsed_timeがある場合
+            if 'elapsed_time' in comments_df.columns:
+                start_seconds = (minute - window) * 60
+                end_seconds = (minute + window + 1) * 60
+                
+                nearby_comments = comments_df[
+                    (comments_df['elapsed_time'] >= start_seconds) & 
+                    (comments_df['elapsed_time'] < end_seconds)
+                ]
+                
+                for _, row in nearby_comments.iterrows():
+                    seconds = int(row['elapsed_time'])
+                    mins = seconds // 60
+                    secs = seconds % 60
+                    comments_list.append({
+                        'text': str(row['comment']),
+                        'timestamp': f"{mins}分{secs:02d}秒",
+                        'user': row.get('user', '不明') if 'user' in row else '不明'
+                    })
+            
+            # minuteカラムがある場合
+            elif 'minute' in comments_df.columns:
+                nearby_comments = comments_df[
+                    (comments_df['minute'] >= minute - window) & 
+                    (comments_df['minute'] <= minute + window)
+                ]
+                
+                for _, row in nearby_comments.iterrows():
+                    comments_list.append({
+                        'text': str(row['comment']),
+                        'timestamp': f"{int(row['minute'])}分",
+                        'user': row.get('user', '不明') if 'user' in row else '不明'
+                    })
+            
+            return comments_list[:10]  # 最大10件
+            
+        except Exception as e:
+            print(f"コメント取得エラー: {str(e)}")
+            return []
     
     def _infer_presenter_behavior(self, metric, minute, peak, event):
         """
@@ -376,9 +476,12 @@ class ReportGenerator:
         
         return recommendations
     
-    def _generate_powerpoint_report(self, summary_stats, chart_path, pie_chart_path, comment_analysis, recommendations, video_duration, correlations):
+    def _generate_powerpoint_report(self, summary_stats, chart_path, pie_chart_path, comment_analysis, recommendations, video_duration, correlations, peak_analysis):
         """
         PowerPointレポートを生成（12スライド版）
+        
+        Args:
+            peak_analysis: 詳細なピーク分析データ（具体的なコメントとタイムスタンプ付き）
         
         Returns:
             str: PPTXファイルパス
@@ -416,23 +519,23 @@ class ReportGenerator:
             pptx_gen.create_slide_5_timeline_engagement(timeline_chart_full_path, peak_info)
             print("[INFO]   ✓ スライド5: 時系列(3) エンゲージメント")
             
-            # 6. 単一指標分析｜同時視聴ユーザー数
-            pptx_gen.create_slide_6_single_metric_viewers(peak_info, recommendations)
+            # 6. 単一指標分析｜同時視聴ユーザー数（詳細データ付き）
+            pptx_gen.create_slide_6_single_metric_viewers(peak_analysis, recommendations)
             print("[INFO]   ✓ スライド6: 単一指標分析(視聴者)")
             
-            # 7. 単一指標分析｜商品クリック数
-            pptx_gen.create_slide_7_single_metric_clicks(peak_info, recommendations)
+            # 7. 単一指標分析｜商品クリック数（詳細データ付き）
+            pptx_gen.create_slide_7_single_metric_clicks(peak_analysis, recommendations)
             print("[INFO]   ✓ スライド7: 単一指標分析(クリック)")
             
-            # 8. 単一指標分析｜チャット＆いいね
-            pptx_gen.create_slide_8_single_metric_engagement(peak_info, recommendations)
+            # 8. 単一指標分析｜チャット＆いいね（詳細データ付き）
+            pptx_gen.create_slide_8_single_metric_engagement(peak_analysis, recommendations)
             print("[INFO]   ✓ スライド8: 単一指標分析(エンゲージメント)")
             
-            # 9. 複数指標分析｜視聴×クリックの相関
+            # 9. 複数指標分析｜視聴×クリックの相関（CTR削除済み）
             pptx_gen.create_slide_9_multi_metric_correlation(summary_stats, peak_info, recommendations)
             print("[INFO]   ✓ スライド9: 複数指標分析(相関)")
             
-            # 10. コメント定量分析
+            # 10. コメント定量分析（詳細コメント付き）
             pptx_gen.create_slide_10_comment_analysis(comment_analysis, pie_chart_full_path)
             print("[INFO]   ✓ スライド10: コメント定量分析")
             
