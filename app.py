@@ -289,9 +289,6 @@ def get_report(session_id):
     except Exception as e:
         return jsonify({'error': f'レポート取得エラー: {str(e)}'}), 500
 
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
-
 @app.route('/api/download/<session_id>', methods=['GET'])
 def download_report(session_id):
     """PowerPointレポートダウンロードエンドポイント"""
@@ -320,3 +317,6 @@ def download_report(session_id):
         
     except Exception as e:
         return jsonify({'error': f'ダウンロードエラー: {str(e)}'}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
