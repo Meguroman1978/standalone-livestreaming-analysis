@@ -54,13 +54,17 @@ class VideoAnalyzer:
                     # 実際の実装では、より高度な画像解析が可能
                     brightness = cv2.mean(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))[0]
                     
+                    # シーン推測を追加
+                    scene_inference = self._infer_scene_context(minute, brightness)
+                    
                     event = {
                         'minute': minute,
                         'timestamp': str(timedelta(seconds=minute * 60)),
                         'frame_number': frame_number,
                         'thumbnail': f'frame_min_{minute:02d}.jpg',
                         'brightness': float(brightness),
-                        'description': f'{minute}分目のシーン'
+                        'description': f'{minute}分目のシーン',
+                        'inferred_context': scene_inference
                     }
                     
                     events.append(event)
@@ -86,6 +90,65 @@ class VideoAnalyzer:
             
         except Exception as e:
             raise Exception(f"動画分析エラー: {str(e)}")
+    
+    def _infer_scene_context(self, minute, brightness):
+        """
+        シーンの文脈を推測（一般的なライブコマースのパターンに基づく）
+        
+        Args:
+            minute (int): 経過分数
+            brightness (float): 画面の明るさ
+        
+        Returns:
+            dict: 推測されるシーン情報
+        """
+        # 一般的なライブコマースの流れに基づく推測
+        inferences = []
+        
+        if minute == 0:
+            inferences.append("配信開始: 挨拶、自己紹介の可能性")
+            inferences.append("視聴者への呼びかけ: 「いいね」やコメントの促し")
+        elif minute <= 2:
+            inferences.append("商品紹介の導入: 本日の商品の概要説明")
+            inferences.append("期待感の醸成: 限定性や特別感の訴求")
+        elif minute <= 5:
+            inferences.append("商品の詳細説明: 特徴や使用方法の紹介")
+            inferences.append("実演・デモンストレーション開始の可能性")
+        elif minute <= 10:
+            inferences.append("商品カード表示の促し: クリック誘導")
+            inferences.append("視覚的な商品紹介: 多角的な見せ方")
+        elif minute <= 15:
+            inferences.append("質問への回答: コメントへの対応")
+            inferences.append("購入の促進: 限定性の再強調")
+        else:
+            inferences.append("まとめと購入の最終促し")
+            inferences.append("感謝の言葉と次回予告")
+        
+        # 明るさに基づく追加推測
+        if brightness > 150:
+            inferences.append("明るいシーン: 商品のクローズアップや詳細説明の可能性")
+        elif brightness < 80:
+            inferences.append("暗めのシーン: 雰囲気作りや特定の演出の可能性")
+        
+        return {
+            'likely_actions': inferences,
+            'scene_type': self._classify_scene_type(minute)
+        }
+    
+    def _classify_scene_type(self, minute):
+        """シーンタイプを分類"""
+        if minute == 0:
+            return "オープニング"
+        elif minute <= 2:
+            return "導入"
+        elif minute <= 5:
+            return "商品紹介（前半）"
+        elif minute <= 10:
+            return "商品紹介（中盤）・実演"
+        elif minute <= 15:
+            return "質疑応答・購入促進"
+        else:
+            return "クロージング"
     
     def get_frame_at_time(self, seconds):
         """

@@ -139,8 +139,19 @@ class GensparkPromptGenerator:
         
         # 視聴者数 × クリック数
         lines.append("\n相関分析：同時視聴ユーザー数 × 商品クリック数")
-        ctr = (summary_stats.get('total_clicks', 0) / summary_stats.get('max_viewers', 1)) * 100 if summary_stats.get('max_viewers', 0) > 0 else 0
+        
+        # CTR計算を修正：合計視聴者数（延べ人数）で割る
+        total_viewers_sum = data_df['viewers'].sum() if 'viewers' in data_df.columns else 1
+        total_clicks = summary_stats.get('total_clicks', 0)
+        
+        # CTRは必ず100%以下になるように計算
+        if total_viewers_sum > 0:
+            ctr = min((total_clicks / total_viewers_sum) * 100, 100.0)
+        else:
+            ctr = 0.0
+        
         lines.append(f"• 推定CTR: {ctr:.2f}%")
+        lines.append(f"  （合計クリック数: {total_clicks}回 / 延べ視聴者数: {int(total_viewers_sum)}名）")
         lines.append("• 考察: 同時視聴者数が安定している時間帯に商品クリックが繰り返し発生しており、特に実演中に高い相関が見られます。")
         lines.append("• アドバイス: 具体的な不安解消（STORY）と、製品仕様（FACT）を混ぜて話すことで、信頼感が増し購入意欲（クリック）へ繋がりやすくなります。")
         

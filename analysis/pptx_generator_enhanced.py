@@ -220,7 +220,15 @@ class EnhancedPowerPointGenerator:
                 p.text = f"  {peak.get('event_description', '増加トレンド確認')}"
                 p.font.size = Pt(10)
                 p.font.color.rgb = self.colors['light_text']
-                p.space_after = Pt(12)
+                p.space_after = Pt(8)
+                
+                # 演者の行動推測を追加
+                if peak.get('likely_presenter_action'):
+                    p = tf.add_paragraph()
+                    p.text = f"  💡 {peak['likely_presenter_action'][:100]}..."
+                    p.font.size = Pt(9)
+                    p.font.color.rgb = RGBColor(0, 128, 0)  # 緑色
+                    p.space_after = Pt(12)
     
     def create_slide_4_timeline_clicks(self, chart_path, peak_info):
         """スライド4: 時系列(2) 商品クリック数とカート追加"""
@@ -305,6 +313,15 @@ class EnhancedPowerPointGenerator:
                 p.text = f"• {peak['minute']}分: {peak['value']:.0f}件"
                 p.font.size = Pt(11)
                 p.space_after = Pt(6)
+                
+                # 演者の行動推測
+                if peak.get('likely_presenter_action'):
+                    p = tf.add_paragraph()
+                    action_text = peak['likely_presenter_action'].split('/')[0][:80]
+                    p.text = f"  💡 {action_text}..."
+                    p.font.size = Pt(8)
+                    p.font.color.rgb = RGBColor(0, 128, 0)
+                    p.space_after = Pt(8)
         
         # コメントピーク
         if peak_info and 'comments' in peak_info and peak_info['comments']:
@@ -317,6 +334,17 @@ class EnhancedPowerPointGenerator:
             for peak in peak_info['comments'][:2]:
                 p = tf.add_paragraph()
                 p.text = f"• {peak['minute']}分: {peak['value']:.0f}件"
+                p.font.size = Pt(11)
+                p.space_after = Pt(6)
+                
+                # 演者の行動推測
+                if peak.get('likely_presenter_action'):
+                    p = tf.add_paragraph()
+                    action_text = peak['likely_presenter_action'].split('/')[0][:80]
+                    p.text = f"  💡 {action_text}..."
+                    p.font.size = Pt(8)
+                    p.font.color.rgb = RGBColor(0, 128, 0)
+                    p.space_after = Pt(8)
                 p.font.size = Pt(11)
                 p.space_after = Pt(6)
     

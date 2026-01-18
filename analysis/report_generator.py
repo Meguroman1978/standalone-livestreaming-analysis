@@ -250,7 +250,7 @@ class ReportGenerator:
     
     def _analyze_peaks(self, correlations, video_events):
         """
-        ピーク分析を実施
+        ピーク分析を実施（演者の行動推測を含む）
         
         Returns:
             dict: ピーク分析結果
@@ -265,15 +265,66 @@ class ReportGenerator:
                     # 対応する動画イベントを探す
                     event = next((e for e in video_events if e['minute'] == minute), None)
                     
+                    # 演者の行動を推測
+                    likely_behavior = self._infer_presenter_behavior(metric, minute, peak, event)
+                    
                     analysis = {
                         'minute': minute,
                         'value': peak['value'],
                         'increase': peak['increase'],
-                        'event_description': event['description'] if event else 'イベント情報なし'
+                        'event_description': event['description'] if event else 'イベント情報なし',
+                        'inferred_context': event.get('inferred_context') if event else None,
+                        'likely_presenter_action': likely_behavior
                     }
                     peak_analysis[metric].append(analysis)
         
         return peak_analysis
+    
+    def _infer_presenter_behavior(self, metric, minute, peak, event):
+        """
+        指標のピークから演者の行動を推測
+        
+        Args:
+            metric (str): 指標名（likes, clicks, comments等）
+            minute (int): ピーク発生時刻
+            peak (dict): ピーク情報
+            event (dict): 動画イベント情報
+        
+        Returns:
+            str: 推測される演者の行動
+        """
+        behaviors = []
+        
+        if metric == 'likes':
+            behaviors.append(f"【{minute}分付近】演者が「この商品が気に入ったらぜひいいね！をクリックしてください」など、いいねボタンのクリックを直接促した可能性が高い")
+            behaviors.append(f"または、商品の魅力的な特徴を強調し、視聴者の共感を得る発言をした可能性")
+            if minute <= 2:
+                behaviors.append("配信開始直後のため、挨拶時に「いいね」を促すのがライブコマースの定石")
+        
+        elif metric == 'clicks':
+            behaviors.append(f"【{minute}分付近】演者が「この商品の詳細ページを見るには、画面に表示されている商品カードをクリックしてください」などと促した可能性")
+            behaviors.append(f"または、商品を指さしたり、画面上の商品カード位置を指示する動作をした可能性")
+            if minute >= 5:
+                behaviors.append("商品説明が一段落したタイミングでの誘導は効果的")
+        
+        elif metric == 'comments':
+            behaviors.append(f"【{minute}分付近】演者が視聴者に質問を投げかけた可能性（例：「どの色がお好みですか？1か2で答えてください」）")
+            behaviors.append(f"または、視聴者のコメントを読み上げて返答し、双方向コミュニケーションを促進した可能性")
+            behaviors.append("クローズドクエスチョン（番号で回答）は特にコメントを活性化させる")
+        
+        elif metric == 'viewers':
+            behaviors.append(f"【{minute}分付近】視覚的に魅力的な商品デモンストレーションや実演を行った可能性")
+            behaviors.append(f"または、限定性・希少性を訴求する発言（「今だけ」「残りわずか」等）をした可能性")
+            if minute == 0:
+                behaviors.append("配信開始直後の視聴者数増加は自然な流れ")
+        
+        # イベント情報から追加推測
+        if event and 'inferred_context' in event:
+            scene_type = event['inferred_context'].get('scene_type', '')
+            if scene_type:
+                behaviors.append(f"シーンタイプ：{scene_type}")
+        
+        return " / ".join(behaviors) if behaviors else "データから特定の行動を推測することは困難"
     
     def _generate_recommendations(self, correlations, comment_analysis, data_df):
         """
