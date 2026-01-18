@@ -6,6 +6,7 @@ import json
 import os
 from datetime import datetime
 import numpy as np
+from .pptx_generator import PowerPointGenerator
 
 # 日本語フォント設定
 plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial', 'sans-serif']
@@ -69,6 +70,17 @@ class ReportGenerator:
             report_path = os.path.join(self.output_folder, 'report.json')
             with open(report_path, 'w', encoding='utf-8') as f:
                 json.dump(report_data, f, ensure_ascii=False, indent=2)
+            
+            # 6. PowerPointレポート生成
+            pptx_path = self._generate_powerpoint_report(
+                summary_stats,
+                chart_path,
+                pie_chart_path,
+                comment_analysis,
+                recommendations,
+                len(video_events)
+            )
+            report_data['pptx_file'] = os.path.basename(pptx_path) if pptx_path else None
             
             return report_data
             
@@ -298,3 +310,45 @@ class ReportGenerator:
         )
         
         return recommendations
+    
+    def _generate_powerpoint_report(self, summary_stats, chart_path, pie_chart_path, comment_analysis, recommendations, video_duration):
+        """
+        PowerPointレポートを生成
+        
+        Returns:
+            str: PPTXファイルパス
+        """
+        try:
+            # PowerPointGenerator初期化
+            pptx_gen = PowerPointGenerator(self.output_folder)
+            
+            # 1. カバースライド
+            pptx_gen.create_cover_slide(summary_stats, video_duration)
+            
+            # 2. KPIサマリースライド
+            pptx_gen.create_kpi_summary_slide(summary_stats)
+            
+            # 3. 時系列グラフスライド
+            timeline_chart_full_path = os.path.join(self.output_folder, chart_path)
+            pptx_gen.create_chart_slide("時系列指標推移", timeline_chart_full_path)
+            
+            # 4. コメント分析スライド
+            pie_chart_full_path = os.path.join(self.output_folder, pie_chart_path)
+            pptx_gen.create_comment_analysis_slide(comment_analysis, pie_chart_full_path)
+            
+            # 5. 改善提案スライド
+            pptx_gen.create_recommendations_slide(recommendations)
+            
+            # 保存
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"live_commerce_analysis_report_{timestamp}.pptx"
+            pptx_path = pptx_gen.save(filename)
+            
+            print(f"[INFO] PowerPointレポート生成完了: {pptx_path}")
+            return pptx_path
+            
+        except Exception as e:
+            print(f"[ERROR] PowerPoint生成エラー: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return None

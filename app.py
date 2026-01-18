@@ -291,3 +291,32 @@ def get_report(session_id):
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+@app.route('/api/download/<session_id>', methods=['GET'])
+def download_report(session_id):
+    """PowerPointレポートダウンロードエンドポイント"""
+    try:
+        session_folder = os.path.join(app.config['UPLOAD_FOLDER'], session_id)
+        
+        if not os.path.exists(session_folder):
+            return jsonify({'error': 'セッションが見つかりません'}), 404
+        
+        # PPTXファイルを探す
+        import glob
+        pptx_files = glob.glob(os.path.join(session_folder, '*.pptx'))
+        
+        if not pptx_files:
+            return jsonify({'error': 'PowerPointレポートが見つかりません'}), 404
+        
+        # 最新のファイルを取得
+        pptx_file = max(pptx_files, key=os.path.getctime)
+        
+        return send_file(
+            pptx_file,
+            as_attachment=True,
+            download_name=os.path.basename(pptx_file),
+            mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        )
+        
+    except Exception as e:
+        return jsonify({'error': f'ダウンロードエラー: {str(e)}'}), 500
