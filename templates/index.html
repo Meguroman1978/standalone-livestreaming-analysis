@@ -146,6 +146,14 @@
                     </label>
                     <p class="file-name" id="dataFileName"></p>
                     <p class="file-hint">CSV, Excel (視聴数、いいね、クリック等)</p>
+                    <div class="data-source-info">
+                        <p class="info-title">📍 データ取得方法</p>
+                        <ol class="info-steps">
+                            <li>BizPortalで対象ライブ動画の<strong>「データ分析」</strong>ページを開く</li>
+                            <li>4段目あたりのチャート（同時視聴者数・いいね数・シェア数・チャット数・商品クリック数・カート追加クリック数）を表示</li>
+                            <li>チャート右上の<strong>「ダウンロード」</strong>ボタンからCSV/Excelをダウンロード</li>
+                        </ol>
+                    </div>
                 </div>
 
                 <!-- Comments Upload -->
@@ -158,6 +166,20 @@
                     </label>
                     <p class="file-name" id="commentsFileName"></p>
                     <p class="file-hint">CSV, Excel (タイムスタンプ付き)</p>
+                    <div class="data-source-info">
+                        <p class="info-title">📍 データ取得方法</p>
+                        <ol class="info-steps">
+                            <li>BizPortalで対象ライブ動画を<strong>「アシスタントモード」</strong>で開く</li>
+                            <li>画面左側の<strong>コメント欄</strong>からデータをダウンロード</li>
+                            <li><strong>⚠️ 重要:</strong> CSVは文字化けするため、以下の手順で変換:
+                                <ul class="sub-steps">
+                                    <li>① Google Spreadsheetを開き、CSVをインポート</li>
+                                    <li>② 日本語が正しく表示されることを確認</li>
+                                    <li>③ <strong>Excel形式（.xlsx）</strong>でダウンロード</li>
+                                </ul>
+                            </li>
+                        </ol>
+                    </div>
                 </div>
             </div>
 
