@@ -3,16 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ライブコマース分析ツール</title>
+    <title>特定ライブ配信分析・考察ツール</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <h1>📊 ライブコマース分析ツール</h1>
+            <h1>📊 特定ライブ配信分析・考察ツール</h1>
             <p class="subtitle">動画・データ・コメントを統合分析し、売上最大化のインサイトを提供</p>
         </header>
+
+        <!-- User Guide Section (Collapsible) -->
+        <section class="guide-section">
+            <button class="guide-toggle" id="guideToggle">
+                <span class="guide-icon">📖</span>
+                <span class="guide-title">操作方法ガイド</span>
+                <span class="toggle-icon" id="toggleIcon">▼</span>
+            </button>
+            <div class="guide-content" id="guideContent" style="display: none;">
+                <div class="guide-inner">
+                    <h3>🎯 このツールでできること</h3>
+                    <p>ライブ配信の動画・配信データ・視聴者コメントを統合分析し、<strong>12スライドの詳細レポート</strong>を自動生成します。</p>
+                    
+                    <h3>📋 必要なファイル</h3>
+                    <div class="guide-requirements">
+                        <div class="requirement-item">
+                            <h4>1. ライブ動画ファイル</h4>
+                            <ul>
+                                <li>形式: MP4, MOV, AVI, MKV</li>
+                                <li><strong>推奨サイズ: 50MB未満</strong></li>
+                                <li>内容: 実際のライブ配信の録画</li>
+                                <li>用途: 動画内イベント（商品紹介、実演等）の分析</li>
+                            </ul>
+                        </div>
+                        <div class="requirement-item">
+                            <h4>2. 配信データ（分チャート）</h4>
+                            <ul>
+                                <li>形式: CSV または Excel (.xlsx, .xls)</li>
+                                <li>必須列: 経過時間(分)、視聴者数、いいね数、コメント数、クリック数</li>
+                                <li>例: 1分ごとの視聴者数やクリック数の推移データ</li>
+                                <li>用途: 時系列トレンド分析、ピーク検出</li>
+                            </ul>
+                        </div>
+                        <div class="requirement-item">
+                            <h4>3. コメントデータ</h4>
+                            <ul>
+                                <li>形式: CSV または Excel (.xlsx, .xls)</li>
+                                <li>必須列: コメント本文、タイムスタンプ（時刻または経過時間）</li>
+                                <li>推奨列: ユーザー名、メッセージID</li>
+                                <li>用途: コメント分類（質問/驚き/購入意志等）、エンゲージメント分析</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h3>🚀 使い方（3ステップ）</h3>
+                    <div class="guide-steps">
+                        <div class="step-item">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>ファイルアップロード</h4>
+                                <p>上記3つのファイルを選択し、「アップロード開始」ボタンをクリック</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>分析実行</h4>
+                                <p>「🚀 分析開始」ボタンをクリック（処理時間: 3〜5分）</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>レポートダウンロード</h4>
+                                <p>分析完了後、「📥 PowerPointレポートをダウンロード」ボタンからレポートを取得</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>📊 生成されるレポート内容</h3>
+                    <div class="guide-output">
+                        <p><strong>12スライド構成の詳細レポート：</strong></p>
+                        <ol>
+                            <li>カバーページ（タイトル、配信概要）</li>
+                            <li>主要KPIサマリー（6指標）</li>
+                            <li>時系列分析(1) 視聴者数推移</li>
+                            <li>時系列分析(2) クリック数推移</li>
+                            <li>時系列分析(3) エンゲージメント推移</li>
+                            <li>単一指標分析 - 視聴者数</li>
+                            <li>単一指標分析 - クリック数</li>
+                            <li>単一指標分析 - エンゲージメント</li>
+                            <li>複数指標分析 - 視聴×クリック相関</li>
+                            <li>コメント定量分析（6カテゴリ分類）</li>
+                            <li>総合考察（成功要因と課題）</li>
+                            <li>アクションプラン（次回配信への提案）</li>
+                        </ol>
+                    </div>
+
+                    <h3>💡 ヒント</h3>
+                    <ul class="guide-tips">
+                        <li>動画サイズが大きい場合は、事前に圧縮することをお勧めします</li>
+                        <li>データファイルの列名は日本語・英語どちらでも自動認識します</li>
+                        <li>ファイル名は任意ですが、内容で自動判別します</li>
+                        <li>分析には3〜5分程度かかります（動画の長さによる）</li>
+                        <li>生成されたレポートはPowerPoint形式でダウンロードできます</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
 
         <!-- Upload Section -->
         <section class="upload-section" id="uploadSection">
@@ -30,6 +129,7 @@
                     </label>
                     <p class="file-name" id="videoFileName"></p>
                     <p class="file-hint">MP4, MOV, AVI, MKV</p>
+                    <p class="file-recommendation">💡 推奨: 50MB未満</p>
                 </div>
 
                 <!-- Data Upload -->

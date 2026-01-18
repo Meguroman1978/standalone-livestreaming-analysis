@@ -378,3 +378,22 @@ function showError(message) {
 function hideError() {
     errorMessage.style.display = 'none';
 }
+
+// Guide toggle functionality
+const guideToggle = document.getElementById('guideToggle');
+const guideContent = document.getElementById('guideContent');
+const toggleIcon = document.getElementById('toggleIcon');
+
+if (guideToggle) {
+    guideToggle.addEventListener('click', () => {
+        const isVisible = guideContent.style.display !== 'none';
+        
+        if (isVisible) {
+            guideContent.style.display = 'none';
+            guideToggle.classList.remove('active');
+        } else {
+            guideContent.style.display = 'block';
+            guideToggle.classList.add('active');
+        }
+    });
+}
