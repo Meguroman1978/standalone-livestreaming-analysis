@@ -1,31 +1,15 @@
-FROM python:3.11-slim
+FROM nginx:1.25-alpine
 
-# 作業ディレクトリを設定
-WORKDIR /app
+# デフォルトのNginx設定を削除
+RUN rm /etc/nginx/conf.d/default.conf
 
-# システムパッケージのインストール
-RUN apt-get update && apt-get install -y \
-    libgl1 \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    && rm -rf /var/lib/apt/lists/*
+# カスタム設定をコピー
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Pythonの依存関係をコピー
-COPY requirements.txt .
+# 静的ファイルをNginxの公開ディレクトリへコピー
+COPY index.html /usr/share/nginx/html/index.html
+COPY README.md  /usr/share/nginx/html/README.md
 
-# 依存関係をインストール
-RUN pip install --no-cache-dir -r requirements.txt
-
-# アプリケーションファイルをコピー
-COPY . .
-
-# ポートを公開
 EXPOSE 8080
 
-# 環境変数を設定
-ENV PORT=8080
-
-# アプリケーションを起動
-CMD gunicorn app:app --bind 0.0.0.0:$PORT --timeout 600 --workers 2 --worker-class sync
+CMD ["nginx", "-g", "daemon off;"]
