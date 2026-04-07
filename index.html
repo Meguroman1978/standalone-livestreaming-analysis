@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ライブ配信エンゲージメント分析ツール</title>
+  <!-- SheetJS for Excel/CSV parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- marked.js for markdown parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9.1.0/marked.min.js"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" />
+
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-light: #818cf8;
+      --primary-dark: #3730a3;
+      --secondary: #06b6d4;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --bg: #f0f4ff;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 4px 24px rgba(79,70,229,0.08);
+      --shadow-hover: 0 8px 32px rgba(79,70,229,0.16);
+      --radius: 16px;
+      --radius-sm: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans JP', 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ===== HEADER ===== */
+    .app-header {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 50%, var(--secondary) 100%);
+      color: white;
+      padding: 32px 40px;
+      text-align: center;
+    }
+    .app-header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+    .app-header p {
+      font-size: 1rem;
+      opacity: 0.85;
+      font-weight: 300;
+    }
+
+    /* ===== MAIN CONTAINER ===== */
+    .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+    /* ===== UPLOAD SECTION ===== */
+    .upload-section {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 32px;
+      box-shadow: var(--shadow);
+      margin-bottom: 32px;
+    }
+    .upload-section h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .upload-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    .upload-item { display: flex; flex-direction: column; gap: 8px; }
+    .upload-item label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .upload-item input[type="file"] {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      font-size: 0.875rem;
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.2s;
+      width: 100%;
+      background: #f8faff;
+    }
+    .upload-item input[type="file"]:hover { border-color: var(--primary-light); background: #f0f4ff; }
+    .file-hint { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* Optional checkbox */
+    .option-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding: 14px 18px;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: var(--radius-sm);
+    }
+    .option-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--warning);
+      cursor: pointer;
+    }
+    .option-row label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #92400e;
+      cursor: pointer;
+    }
+    .option-row .option-note {
+      font-size: 0.75rem;
+      color: #b45309;
+      margin-top: 2px;
+    }
+
+    /* Text area */
+    .text-section { margin-top: 8px; }
+    .text-section label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .text-section textarea {
+      width: 100%;
+      height: 180px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-size: 0.875rem;
+      font-family: inherit;
+      color: var(--text);
+      resize: vertical;
+      transition: border-color 0.2s;
+      background: #f8faff;
+    }
+    .text-section textarea:focus {
+      outline: none;
+      border-color: var(--primary-light);
+      background: white;
+    }
+
+    /* Analyze button */
+    .analyze-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+      letter-spacing: 0.5px;
+    }
+    .analyze-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover); }
+    .analyze-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* Progress / error */
+    #status-msg {
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      display: none;
+    }
+    #status-msg.error { background: #fef2f2; border: 1px solid #fca5a5; color: #dc2626; }
+    #status-msg.info  { background: #eff6ff; border: 1px solid #93c5fd; color: #1d4ed8; }
+
+    /* ===== REPORT SECTION ===== */
+    #report { display: none; }
+
+    /* Section headers */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 40px 0 20px;
+    }
+    .section-header .icon-badge {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+    .section-header .icon-badge.purple { background: #ede9fe; color: var(--primary); }
+    .section-header .icon-badge.teal   { background: #ccfbf1; color: #0f766e; }
+    .section-header .icon-badge.amber  { background: #fef3c7; color: #b45309; }
+    .section-header h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Chart containers */
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 400px;
+      margin-bottom: 10px;
+    }
+    .chart-wrap-sm {
+      position: relative;
+      width: 100%;
+      height: 300px;
+      margin-bottom: 10px;
+    }
+
+    /* Insight & Advice blocks */
+    .insight-block {
+      background: #f0fdf4;
+      border-left: 4px solid var(--success);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 16px 20px;
+      margin-top: 16px;
+    }
+    .insight-block h4 {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: #065f46;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .insight-block p, .insight-block li {
+      font-size: 0.875rem;
+      color: #064e3b;
+      line-height: 1.7;
+    }
+    .advice-block {
+      background: #eff6ff;
+      border-left: 4px solid var(--primary-light);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 16px 20px;
+      margin-top: 12px;
+    }
+    .advice-block h4 {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: #1e40af;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .advice-block p, .advice-block li {
+      font-size: 0.875rem;
+      color: #1e3a8a;
+      line-height: 1.7;
+    }
+
+    /* Heatmap */
+    .heatmap-container {
+      overflow-x: auto;
+      margin-top: 8px;
+    }
+    .heatmap-table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 500px;
+    }
+    .heatmap-table th, .heatmap-table td {
+      padding: 12px 10px;
+      text-align: center;
+      font-size: 0.8rem;
+      border: 1px solid var(--border);
+    }
+    .heatmap-table th {
+      background: #f1f5f9;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .heatmap-val {
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    /* Top3 correlation cards */
+    .corr-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .corr-card {
+      background: #f8faff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 18px;
+    }
+    .corr-card .pair { font-weight: 700; color: var(--primary-dark); font-size: 0.9rem; margin-bottom: 6px; }
+    .corr-card .corr-score {
+      display: inline-block;
+      padding: 3px 12px;
+      border-radius: 100px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .corr-card .corr-score.pos { background: #d1fae5; color: #065f46; }
+    .corr-card .corr-score.neg { background: #fee2e2; color: #991b1b; }
+    .corr-card p { font-size: 0.8rem; color: var(--text-muted); line-height: 1.6; }
+
+    /* Stats summary row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: #f8faff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 12px;
+      text-align: center;
+    }
+    .stat-card .label { font-size: 0.7rem; color: var(--text-muted); font-weight: 500; margin-bottom: 4px; }
+    .stat-card .value { font-size: 1.1rem; font-weight: 700; color: var(--primary-dark); }
+    .stat-card .unit  { font-size: 0.7rem; color: var(--text-muted); }
+
+    /* No-comment notice */
+    .no-comment-notice {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      color: #92400e;
+      margin-top: 12px;
+    }
+
+    /* Divider */
+    .divider { border: none; border-top: 2px solid var(--border); margin: 32px 0; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .app-header { padding: 24px 20px; }
+      .app-header h1 { font-size: 1.5rem; }
+      .container { padding: 20px 16px; }
+      .upload-section { padding: 24px 20px; }
+      .card { padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="app-header">
+  <h1><i class="fas fa-chart-line"></i> ライブ配信エンゲージメント分析ツール</h1>
+  <p>指標データ・コメント・テキスト分析から、多角的なエンゲージメントレポートを自動生成</p>
+</div>
+
+<!-- ===== UPLOAD PANEL ===== -->
+<div class="container">
+  <div class="upload-section">
+    <h2><i class="fas fa-upload" style="color:var(--primary)"></i> データのアップロード</h2>
+
+    <div class="upload-grid">
+      <!-- Metrics file -->
+      <div class="upload-item">
+        <label><i class="fas fa-table"></i> 指標データファイル（必須）</label>
+        <input type="file" id="metrics-file" accept=".xlsx,.xls,.csv" />
+        <span class="file-hint">Excel (.xlsx/.xls) または CSV (.csv)</span>
+      </div>
+      <!-- Comment file -->
+      <div class="upload-item" id="comment-upload-area">
+        <label><i class="fas fa-comments"></i> コメントデータファイル</label>
+        <input type="file" id="comment-file" accept=".xlsx,.xls,.csv" />
+        <span class="file-hint">Excel (.xlsx/.xls) または CSV (.csv)</span>
+      </div>
+      <!-- Video file (optional, informational) -->
+      <div class="upload-item">
+        <label><i class="fas fa-video"></i> 動画ファイル（参照用・任意）</label>
+        <input type="file" id="video-file" accept=".mp4,.mov,.avi" />
+        <span class="file-hint">MP4 / MOV / AVI（分析には使用しません）</span>
+      </div>
+    </div>
+
+    <!-- No-comment option -->
+    <div class="option-row">
+      <input type="checkbox" id="no-comment-chk" />
+      <div>
+        <label for="no-comment-chk">コメントデータをアップロードしない</label>
+        <div class="option-note">チェックすると、コメントデータなしで指標データのみを使って分析を実行します。</div>
+      </div>
+    </div>
+
+    <!-- Text analysis input -->
+    <div class="text-section">
+      <label><i class="fas fa-align-left"></i> テキスト分析データ（任意：マークダウン / プレーンテキスト）</label>
+      <textarea id="analysis-text" placeholder="ライブ配信の分析テキスト、スクリプト文字起こし、コメントなどをここに貼り付けてください。&#10;&#10;マークダウン記法に対応しています。考察・アドバイスの自動振り分けを行います。"></textarea>
+    </div>
+
+    <button class="analyze-btn" id="analyze-btn">
+      <i class="fas fa-chart-bar"></i> 分析レポートを生成する
+    </button>
+    <div id="status-msg"></div>
+  </div>
+
+  <!-- ===== REPORT ===== -->
+  <div id="report"></div>
+</div>
+
+<script>
+/* ========================================================
+   UTILITY FUNCTIONS
+   ======================================================== */
+
+function showStatus(msg, type='info') {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.className = type;
+  el.style.display = 'block';
+}
+function hideStatus() {
+  document.getElementById('status-msg').style.display = 'none';
+}
+
+/* ─── Column name normalization ─── */
+/* Maps various possible column names → canonical key */
+const COL_ALIASES = {
+  elapsed: [
+    '経過時間','elapsed_time','elapsed','時間（分）','時間(分)','時間',
+    'time','time(min)','time（min）','経過（分）','分','elapsed_minutes',
+    'elapsedtime','elapsed time','elapsed_min','min','経過時間（分）','elapsed(min)'
+  ],
+  viewers: [
+    '同時視聴ユーザー数','同時視聴者数','視聴者数','viewers','concurrent_viewers',
+    'concurrent viewers','live_viewers','live viewers','同時接続数','ユーザー数',
+    'viewer','peak_viewers','peak viewers','peak_concurrent','リアルタイム視聴者数'
+  ],
+  likes: [
+    'いいね数','いいね','likes','like','like_count','likes_count','reaction',
+    'reactions','リアクション数','ハート数','heart','hearts'
+  ],
+  shares: [
+    'シェア数','シェア','shares','share','share_count','shares_count'
+  ],
+  chats: [
+    'チャット数','チャット','コメント数','コメント','comments','comment',
+    'chat','chats','chat_count','comment_count','メッセージ数','message','messages'
+  ],
+  product_clicks: [
+    '商品クリック数','商品クリック','product_clicks','product clicks',
+    'item_clicks','item clicks','product_click','クリック数','click','clicks',
+    '商品tap','商品タップ','product_tap','item_click'
+  ],
+  cart_clicks: [
+    'カート追加クリック数','カート追加','カート','cart_clicks','cart clicks',
+    'add_to_cart','add to cart','cart_add','cart_additions','カートクリック',
+    'カート追加数','addtocart','add_cart'
+  ]
+};
+
+function normalizeColumnName(raw) {
+  if (raw == null) return null;
+  const s = String(raw).trim().toLowerCase().replace(/[\s　_\-・]+/g, '');
+  for (const [key, aliases] of Object.entries(COL_ALIASES)) {
+    for (const alias of aliases) {
+      const a = alias.toLowerCase().replace(/[\s　_\-・]+/g, '');
+      if (s === a) return key;
+    }
+  }
+  return null;
+}
+
+/* ─── Which canonical keys are available in this dataset ─── */
+let AVAILABLE_METRICS = {}; // canonical key → true/false
+
+function parseSheetToRows(sheet) {
+  /* Returns array of objects with normalized keys.
+     Falls back gracefully when some columns are missing or have unknown names. */
+  const raw = XLSX.utils.sheet_to_json(sheet, { defval: null, raw: false });
+  if (!raw.length) return [];
+
+  const firstRow = raw[0];
+  const origKeys = Object.keys(firstRow);
+
+  // Build colMap: originalKey → canonicalKey
+  const colMap = {};
+  for (const origKey of origKeys) {
+    const norm = normalizeColumnName(origKey);
+    if (norm) colMap[origKey] = norm;
+  }
+
+  // ── Fallback: if nothing mapped at all, try positional mapping ──
+  // Assume standard column order: elapsed, viewers, likes, shares, chats, product_clicks, cart_clicks
+  const POSITIONAL_KEYS = ['elapsed','viewers','likes','shares','chats','product_clicks','cart_clicks'];
+  if (Object.keys(colMap).length === 0) {
+    origKeys.forEach((k, i) => {
+      if (i < POSITIONAL_KEYS.length) colMap[k] = POSITIONAL_KEYS[i];
+    });
+  }
+
+  // ── Fallback: if still no elapsed, use first numeric-looking column as elapsed ──
+  const mappedValues = Object.values(colMap);
+  if (!mappedValues.includes('elapsed') && origKeys.length > 0) {
+    // Find first column whose values look numeric
+    const numericCol = origKeys.find(k => {
+      const v = firstRow[k];
+      return v !== null && v !== '' && !isNaN(parseFloat(String(v).replace(/,/g,'')));
+    });
+    if (numericCol && !colMap[numericCol]) {
+      colMap[numericCol] = 'elapsed';
+    } else if (numericCol) {
+      // Already mapped to something else — duplicate as elapsed
+      colMap['__elapsed_fallback__'] = 'elapsed';
+    } else {
+      // Last resort: use row index as elapsed (injected below)
+    }
+  }
+
+  // Track which canonical metrics exist in this file
+  AVAILABLE_METRICS = {};
+  for (const canon of Object.values(colMap)) AVAILABLE_METRICS[canon] = true;
+
+  const result = raw.map((r, idx) => {
+    const obj = {};
+    for (const [orig, norm] of Object.entries(colMap)) {
+      if (orig === '__elapsed_fallback__') {
+        obj[norm] = r[Object.keys(r)[0]]; // use first col value
+      } else {
+        const v = r[orig];
+        obj[norm] = (v === null || v === '' || v === undefined) ? null : v;
+      }
+    }
+    // If elapsed is still missing, use row index
+    if (obj.elapsed === null || obj.elapsed === undefined) {
+      obj.elapsed = idx;
+    }
+    // Fill missing canonical metrics with null
+    for (const k of ['viewers','likes','shares','chats','product_clicks','cart_clicks']) {
+      if (!(k in obj)) obj[k] = null;
+    }
+    return obj;
+  });
+
+  // Filter out rows where elapsed is completely unparseable
+  return result.filter(r => {
+    const v = toNumber(r.elapsed);
+    return !isNaN(v);
+  });
+}
+
+function toNumber(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  const n = parseFloat(String(v).replace(/,/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+/* ─── Read file as array buffer ─── */
+function readFileAsAB(file) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = e => res(e.target.result);
+    fr.onerror = () => rej(new Error('ファイルの読み込みに失敗しました'));
+    fr.readAsArrayBuffer(file);
+  });
+}
+
+async function parseFile(file) {
+  const ab = await readFileAsAB(file);
+  const wb = XLSX.read(ab, { type: 'array' });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  return parseSheetToRows(sheet);
+}
+
+/* ─── Helper: check if a metric has any non-zero data ─── */
+function hasData(agg, key) {
+  return agg.some(r => toNumber(r[key]) > 0);
+}
+
+/* ========================================================
+   STATISTICS HELPERS
+   ======================================================== */
+function pearsonCorr(xs, ys) {
+  const n = xs.length;
+  if (n < 3) return 0;
+  const mx = xs.reduce((a,b)=>a+b,0)/n;
+  const my = ys.reduce((a,b)=>a+b,0)/n;
+  let num=0, dx2=0, dy2=0;
+  for (let i=0;i<n;i++) {
+    const dx=xs[i]-mx, dy=ys[i]-my;
+    num+=dx*dy; dx2+=dx*dx; dy2+=dy*dy;
+  }
+  const den = Math.sqrt(dx2*dy2);
+  return den===0 ? 0 : num/den;
+}
+
+function computeAllCorrelations(dataArr) {
+  // Only include metrics that actually have data
+  const ALL_METRICS = ['likes','shares','chats','product_clicks','cart_clicks'];
+  const ALL_LABELS  = { likes:'いいね数', shares:'シェア数', chats:'チャット数',
+                        product_clicks:'商品クリック数', cart_clicks:'カート追加' };
+  const metrics = ALL_METRICS.filter(m => hasData(dataArr, m));
+  const labels  = {};
+  for (const m of metrics) labels[m] = ALL_LABELS[m];
+
+  // Need at least 2 metrics to compute a meaningful matrix
+  if (metrics.length < 2) {
+    // Return a minimal valid structure
+    const m = metrics[0] || 'likes';
+    return { matrix:{ [m]:{ [m]:1 } }, metrics:[m], labels:{ [m]: ALL_LABELS[m]||m } };
+  }
+
+  const matrix = {};
+  for (const a of metrics) {
+    matrix[a] = {};
+    for (const b of metrics) {
+      if (a === b) { matrix[a][b] = 1; continue; }
+      const xs = dataArr.map(r=>toNumber(r[a]));
+      const ys = dataArr.map(r=>toNumber(r[b]));
+      matrix[a][b] = parseFloat(pearsonCorr(xs,ys).toFixed(3));
+    }
+  }
+  return { matrix, metrics, labels };
+}
+
+/* ========================================================
+   TEXT PROCESSING
+   ======================================================== */
+const STRIP_PATTERNS = [
+  /^こんにちは|^こんばんは|^はじめまして|^ありがとうございます/,
+  /^RMK|^ライブ配信について|^このライブは/,
+  /\*{2,}/g,
+  /#{1,}/g,
+];
+
+function cleanText(text) {
+  if (!text) return '';
+  return text
+    .replace(/\*+/g, '')
+    .replace(/#{1,6}\s?/g, '')
+    .replace(/^[-•]\s/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/* Split raw text into insight / advice paragraphs */
+function splitInsightAdvice(text) {
+  if (!text) return { insight:'', advice:'' };
+  const insightKw = ['考察','傾向','分析','変化','推移','ピーク','増加','減少','関連','相関','影響','観察','確認','見られ'];
+  const adviceKw  = ['アドバイス','提案','推奨','ヒント','戦略','施策','改善','方法','おすすめ','ポイント','注意','すべき','してみ','試し','活用'];
+
+  const lines = text.split('\n').filter(l=>l.trim());
+  const insightLines=[], adviceLines=[];
+
+  let mode = 'insight';
+  for (const line of lines) {
+    const l = line.trim();
+    if (!l) continue;
+    // Detect section switch keywords
+    if (adviceKw.some(k => l.includes(k)) && !insightKw.some(k=>l.includes(k))) {
+      mode = 'advice';
+    } else if (insightKw.some(k => l.includes(k)) && !adviceKw.some(k=>l.includes(k))) {
+      mode = 'insight';
+    }
+    if (mode === 'advice') adviceLines.push(l);
+    else insightLines.push(l);
+  }
+
+  // If nothing ended up in advice, try numbered list split
+  if (!adviceLines.length) {
+    const parts = text.split(/(?=\d+\.\s)/);
+    const half = Math.ceil(parts.length / 2);
+    return {
+      insight: cleanText(parts.slice(0, half).join('\n')),
+      advice:  cleanText(parts.slice(half).join('\n'))
+    };
+  }
+
+  return {
+    insight: cleanText(insightLines.join('\n')),
+    advice:  cleanText(adviceLines.join('\n'))
+  };
+}
+
+/* Extract section blocks from analysis text */
+function extractTextSections(rawText) {
+  if (!rawText || !rawText.trim()) return { single:[], multi:[], heatmap:'' };
+
+  const text = rawText.replace(/\r\n/g,'\n');
+  // Try to find blocks by number patterns like 1. / ① / 【...】
+  const blockSeps = /(?:^|\n)(?:【.*?】|#+\s|(?:[①②③④⑤⑥⑦⑧⑨⑩])|(?:\d+\.)(?=\s))/gm;
+  const parts = text.split(blockSeps).filter(p=>p.trim().length>30);
+
+  const sections = { single:[], multi:[], heatmap:'' };
+
+  const heatmapKw = ['相関','ヒートマップ','correlation'];
+  const multiKw   = ['複数','組み合わせ','複合','相互'];
+  const singleKw  = ['単一','個別','それぞれ'];
+
+  for (const part of parts) {
+    const lc = part.toLowerCase();
+    if (heatmapKw.some(k=>part.includes(k))) {
+      sections.heatmap = cleanText(part);
+    } else if (multiKw.some(k=>part.includes(k))) {
+      sections.multi.push(cleanText(part));
+    } else {
+      sections.single.push(cleanText(part));
+    }
+  }
+
+  // If can't categorize, dump all to single
+  if (!sections.single.length && !sections.multi.length) {
+    // Split roughly in half
+    const half = Math.floor(parts.length/2);
+    sections.single = parts.slice(0,half||1).map(cleanText);
+    sections.multi  = parts.slice(half).map(cleanText);
+  }
+
+  return sections;
+}
+
+/* ========================================================
+   CHART BUILDERS
+   ======================================================== */
+let chartInstances = [];
+function destroyCharts() {
+  chartInstances.forEach(c => { try { c.destroy(); } catch(e){} });
+  chartInstances = [];
+}
+
+/* Aggregates data by minute (takes max for viewers, sum for others) */
+function aggregateByMinute(dataArr) {
+  const map = {};
+  for (const row of dataArr) {
+    const min = Math.round(toNumber(row.elapsed));
+    if (!map[min]) map[min] = { count:0, elapsed:min, viewers:0,
+      likes:0, shares:0, chats:0, product_clicks:0, cart_clicks:0 };
+    map[min].count++;
+    map[min].viewers      = Math.max(map[min].viewers,      toNumber(row.viewers));
+    map[min].likes        += toNumber(row.likes);
+    map[min].shares       += toNumber(row.shares);
+    map[min].chats        += toNumber(row.chats);
+    map[min].product_clicks += toNumber(row.product_clicks);
+    map[min].cart_clicks  += toNumber(row.cart_clicks);
+  }
+  return Object.values(map).sort((a,b)=>a.elapsed-b.elapsed);
+}
+
+const PALETTE = {
+  viewers:        'rgba(147,197,253,0.7)',
+  likes:          '#f97316',
+  shares:         '#a855f7',
+  chats:          '#14b8a6',
+  product_clicks: '#ef4444',
+  cart_clicks:    '#f59e0b'
+};
+
+/* CHART 1 – composite (bar + lines) — only show metrics with data */
+function buildChart1(canvasId, agg) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const labels = agg.map(r => r.elapsed + '分');
+
+  const datasets = [];
+
+  // Bar: viewers (only if data exists)
+  if (hasData(agg, 'viewers')) {
+    datasets.push({
+      type:'bar', label:'同時視聴',
+      data: agg.map(r=>toNumber(r.viewers)),
+      backgroundColor: PALETTE.viewers, borderColor: PALETTE.viewers,
+      yAxisID:'y', order:2
+    });
+  }
+
+  // Lines: other metrics
+  const lineMetrics = [
+    { key:'likes',          label:'いいね',      color:PALETTE.likes },
+    { key:'shares',         label:'シェア',      color:PALETTE.shares },
+    { key:'chats',          label:'チャット',    color:PALETTE.chats },
+    { key:'product_clicks', label:'商品クリック', color:PALETTE.product_clicks },
+    { key:'cart_clicks',    label:'カート追加',  color:PALETTE.cart_clicks },
+  ];
+  for (const m of lineMetrics) {
+    if (hasData(agg, m.key)) {
+      datasets.push({
+        type:'line', label:m.label,
+        data: agg.map(r=>toNumber(r[m.key])),
+        borderColor:m.color, backgroundColor:'transparent',
+        borderWidth:2, pointRadius:2, yAxisID:'y1', tension:0.3, order:1
+      });
+    }
+  }
+
+  // Determine if we need dual axis
+  const hasBars  = datasets.some(d=>d.type==='bar');
+  const hasLines = datasets.some(d=>d.type==='line');
+  const scalesConf = hasBars && hasLines ? {
+    y:  { type:'linear', display:true, position:'left',
+          title:{ display:true, text:'同時視聴者数' }, grid:{ color:'rgba(0,0,0,0.04)' } },
+    y1: { type:'linear', display:true, position:'right',
+          title:{ display:true, text:'エンゲージメント指標' }, grid:{ drawOnChartArea:false } }
+  } : {
+    y:  { type:'linear', display:true, position:'left',
+          title:{ display:true, text:'値' }, grid:{ color:'rgba(0,0,0,0.04)' } }
+  };
+
+  // If no dual axis, reassign all to 'y'
+  if (!hasBars || !hasLines) {
+    datasets.forEach(d => { d.yAxisID = 'y'; });
+  }
+
+  const chart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ position:'bottom', labels:{ usePointStyle:true, pointStyle:'line', boxWidth:30, padding:12 } }
+      },
+      scales: scalesConf
+    }
+  });
+  chartInstances.push(chart);
+}
+
+/* CHART 2-4 – single line */
+function buildLineChart(canvasId, agg, key, label, color) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const chart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels: agg.map(r=>r.elapsed+'分'),
+      datasets:[{
+        label,
+        data: agg.map(r=>r[key]),
+        borderColor: color,
+        backgroundColor: 'transparent',
+        borderWidth: 2.5,
+        pointRadius: 3,
+        tension: 0.35
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ grid:{ color:'rgba(0,0,0,0.04)' } },
+        y:{ beginAtZero:true, grid:{ color:'rgba(0,0,0,0.04)' },
+            title:{ display:true, text:label } }
+      }
+    }
+  });
+  chartInstances.push(chart);
+}
+
+/* ========================================================
+   HEATMAP RENDERER
+   ======================================================== */
+function renderHeatmap(corrData) {
+  const { matrix, metrics, labels } = corrData;
+
+  function corrColor(v) {
+    if (v === 1) return '#f1f5f9';
+    if (v > 0) {
+      const i = Math.round(v*255);
+      return `rgba(16,185,129,${(v*0.8+0.1).toFixed(2)})`;
+    } else {
+      const i = Math.round(Math.abs(v)*255);
+      return `rgba(239,68,68,${(Math.abs(v)*0.8+0.1).toFixed(2)})`;
+    }
+  }
+
+  let html = '<div class="heatmap-container"><table class="heatmap-table"><thead><tr><th></th>';
+  for (const m of metrics) html += `<th>${labels[m]}</th>`;
+  html += '</tr></thead><tbody>';
+
+  for (const a of metrics) {
+    html += `<tr><th>${labels[a]}</th>`;
+    for (const b of metrics) {
+      const v = matrix[a][b];
+      const bg = corrColor(v);
+      const textCol = v === 1 ? '#94a3b8' : (Math.abs(v) > 0.5 ? '#fff' : '#1e293b');
+      html += `<td style="background:${bg};color:${textCol}"><span class="heatmap-val">${v===1?'—':v.toFixed(2)}</span></td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+
+  // Legend
+  html += `
+    <div style="display:flex;gap:24px;margin-top:14px;font-size:0.78rem;color:var(--text-muted)">
+      <span><span style="display:inline-block;width:14px;height:14px;background:rgba(16,185,129,0.7);border-radius:3px;vertical-align:middle;margin-right:4px;"></span>正の相関（緑）</span>
+      <span><span style="display:inline-block;width:14px;height:14px;background:rgba(239,68,68,0.7);border-radius:3px;vertical-align:middle;margin-right:4px;"></span>負の相関（赤）</span>
+      <span><span style="display:inline-block;width:14px;height:14px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:3px;vertical-align:middle;margin-right:4px;"></span>同一指標（—）</span>
+    </div>`;
+  return html;
+}
+
+/* ========================================================
+   TOP 3 CORRELATION PAIRS
+   ======================================================== */
+function getTop3Correlations(corrData) {
+  const { matrix, metrics, labels } = corrData;
+  const pairs = [];
+  for (let i=0;i<metrics.length;i++) {
+    for (let j=i+1;j<metrics.length;j++) {
+      const v = matrix[metrics[i]][metrics[j]];
+      pairs.push({ a:metrics[i], b:metrics[j], v, abs:Math.abs(v) });
+    }
+  }
+  pairs.sort((a,b)=>b.abs-a.abs);
+  const top = pairs.slice(0,3);
+
+  const descMap = {
+    'likes-chats':          'いいね数とチャット数は視聴者の同時エンゲージメントを表し、高い相関は配信中のインタラクティブな盛り上がりを示します。',
+    'likes-product_clicks': 'いいね数と商品クリック数の相関は、感情的反応が購買関心に直結する傾向を示します。',
+    'likes-shares':         'いいね数とシェア数の相関は、コンテンツの拡散力と共感度を同時に測る指標です。',
+    'chats-product_clicks': 'チャット活性化と商品クリックの相関は、会話・質問が購買行動の入口になることを示唆します。',
+    'product_clicks-cart_clicks': '商品クリックとカート追加の相関は購買ファネルの転換率を表す重要指標です。',
+    'shares-product_clicks':'シェア行動と商品クリックの相関は、拡散が購買関心を呼び込む効果を示します。',
+    'chats-cart_clicks':    'チャット数とカート追加の相関は、視聴者の積極的な関与が購買につながる流れを示します。',
+    'shares-cart_clicks':   'シェアとカート追加の相関は、外部拡散が購買意欲の高いユーザーを引き込む効果を表します。',
+    'likes-cart_clicks':    'いいね数とカート追加の相関は、感情的共感が直接購買に結びつく傾向を示します。',
+    'shares-chats':         'シェア数とチャット数の相関は、コミュニティの盛り上がりとリーチ拡大の連動を示します。',
+  };
+
+  return top.map(p => {
+    const key1 = [p.a,p.b].sort().join('-');
+    const key2 = [p.b,p.a].sort().join('-');
+    const desc = descMap[key1] || descMap[key2] || '両指標は配信中に連動して変動する傾向が見られました。配信内のイベントや演出が同時に影響を与えている可能性があります。';
+    return {
+      pairLabel: `${labels[p.a]} × ${labels[p.b]}`,
+      value: p.v,
+      isPos: p.v >= 0,
+      desc
+    };
+  });
+}
+
+/* ========================================================
+   STATS SUMMARY
+   ======================================================== */
+function buildStatsSummary(agg) {
+  const maxViewers   = hasData(agg,'viewers')    ? Math.max(...agg.map(r=>toNumber(r.viewers))) : null;
+  const totalLikes   = hasData(agg,'likes')       ? agg.reduce((s,r)=>s+toNumber(r.likes),0)   : null;
+  const totalShares  = hasData(agg,'shares')      ? agg.reduce((s,r)=>s+toNumber(r.shares),0)  : null;
+  const totalChats   = hasData(agg,'chats')       ? agg.reduce((s,r)=>s+toNumber(r.chats),0)   : null;
+  const totalProdClk = hasData(agg,'product_clicks') ? agg.reduce((s,r)=>s+toNumber(r.product_clicks),0) : null;
+  const totalCart    = hasData(agg,'cart_clicks') ? agg.reduce((s,r)=>s+toNumber(r.cart_clicks),0) : null;
+  const duration     = toNumber(agg[agg.length-1]?.elapsed) - toNumber(agg[0]?.elapsed) || agg.length;
+
+  const NA = '<span style="color:#cbd5e1;font-size:0.8rem">—</span>';
+  const fmt = v => v !== null ? v.toLocaleString() : NA;
+
+  return `
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="label">配信時間</div>
+        <div class="value">${duration}</div>
+        <div class="unit">分</div>
+      </div>
+      ${maxViewers !== null ? `
+      <div class="stat-card">
+        <div class="label">最大同時視聴</div>
+        <div class="value">${maxViewers.toLocaleString()}</div>
+        <div class="unit">人</div>
+      </div>` : ''}
+      ${totalLikes !== null ? `
+      <div class="stat-card">
+        <div class="label">いいね合計</div>
+        <div class="value">${totalLikes.toLocaleString()}</div>
+        <div class="unit">件</div>
+      </div>` : ''}
+      ${totalShares !== null ? `
+      <div class="stat-card">
+        <div class="label">シェア合計</div>
+        <div class="value">${totalShares.toLocaleString()}</div>
+        <div class="unit">件</div>
+      </div>` : ''}
+      ${totalChats !== null ? `
+      <div class="stat-card">
+        <div class="label">チャット合計</div>
+        <div class="value">${totalChats.toLocaleString()}</div>
+        <div class="unit">件</div>
+      </div>` : ''}
+      ${totalProdClk !== null ? `
+      <div class="stat-card">
+        <div class="label">商品クリック</div>
+        <div class="value">${totalProdClk.toLocaleString()}</div>
+        <div class="unit">件</div>
+      </div>` : ''}
+      ${totalCart !== null ? `
+      <div class="stat-card">
+        <div class="label">カート追加</div>
+        <div class="value">${totalCart.toLocaleString()}</div>
+        <div class="unit">件</div>
+      </div>` : ''}
+    </div>`;
+}
+
+/* ========================================================
+   INSIGHT BLOCKS FROM TEXT
+   ======================================================== */
+function makeInsightAdviceHTML(text, hideAdvice=false) {
+  if (!text || !text.trim()) return '';
+  const { insight, advice } = splitInsightAdvice(text);
+  let html = '';
+  if (insight) {
+    html += `
+      <div class="insight-block">
+        <h4><i class="fas fa-lightbulb"></i> 考察</h4>
+        <p>${insight.replace(/\n/g,'<br>')}</p>
+      </div>`;
+  }
+  if (!hideAdvice && advice) {
+    html += `
+      <div class="advice-block">
+        <h4><i class="fas fa-bullseye"></i> アドバイス</h4>
+        <p>${advice.replace(/\n/g,'<br>')}</p>
+      </div>`;
+  }
+  return html;
+}
+
+/* ========================================================
+   DATA-DRIVEN AUTO INSIGHTS
+   ======================================================== */
+function autoInsight_single(agg) {
+  if (!agg.length) return '';
+  const parts = [];
+
+  if (hasData(agg,'viewers')) {
+    const maxV = agg.reduce((m,r)=>toNumber(r.viewers)>toNumber(m.viewers)?r:m, agg[0]);
+    parts.push(`同時視聴者数は <strong>${maxV.elapsed}分</strong> 時点で最大 <strong>${toNumber(maxV.viewers).toLocaleString()}人</strong> を記録しました。`);
+  }
+  if (hasData(agg,'product_clicks')) {
+    const maxP = agg.reduce((m,r)=>toNumber(r.product_clicks)>toNumber(m.product_clicks)?r:m, agg[0]);
+    parts.push(`商品クリック数のピークは <strong>${maxP.elapsed}分</strong>（${toNumber(maxP.product_clicks).toLocaleString()}件）でした。`);
+  }
+  if (hasData(agg,'chats')) {
+    const maxC = agg.reduce((m,r)=>toNumber(r.chats)>toNumber(m.chats)?r:m, agg[0]);
+    parts.push(`チャットのピークは <strong>${maxC.elapsed}分</strong>（${toNumber(maxC.chats).toLocaleString()}件）でした。`);
+  }
+  if (hasData(agg,'likes')) {
+    const maxL = agg.reduce((m,r)=>toNumber(r.likes)>toNumber(m.likes)?r:m, agg[0]);
+    parts.push(`いいねのピークは <strong>${maxL.elapsed}分</strong>（${toNumber(maxL.likes).toLocaleString()}件）でした。`);
+  }
+  if (hasData(agg,'cart_clicks') && hasData(agg,'product_clicks')) {
+    const maxCart   = agg.reduce((m,r)=>toNumber(r.cart_clicks)>toNumber(m.cart_clicks)?r:m, agg[0]);
+    const totalProd = agg.reduce((s,r)=>s+toNumber(r.product_clicks),0);
+    const totalCart = agg.reduce((s,r)=>s+toNumber(r.cart_clicks),0);
+    const convRate  = totalProd ? (totalCart/totalProd*100).toFixed(1) : 0;
+    parts.push(`カート追加のピークは <strong>${maxCart.elapsed}分</strong>（${toNumber(maxCart.cart_clicks).toLocaleString()}件）で、商品クリックからカート追加への全体転換率は <strong>${convRate}%</strong> でした。`);
+  } else if (hasData(agg,'cart_clicks')) {
+    const maxCart = agg.reduce((m,r)=>toNumber(r.cart_clicks)>toNumber(m.cart_clicks)?r:m, agg[0]);
+    parts.push(`カート追加のピークは <strong>${maxCart.elapsed}分</strong>（${toNumber(maxCart.cart_clicks).toLocaleString()}件）でした。`);
+  }
+
+  if (!parts.length) return '指標データが読み込まれました。グラフをご確認ください。';
+  return parts.join('<br>');
+}
+
+function autoInsight_productClick(agg) {
+  if (!agg.length) return '';
+  if (!hasData(agg,'product_clicks')) return '商品クリック数のデータが含まれていませんでした。指標データに「商品クリック数」列を追加すると、より詳細な分析が可能です。';
+  const sorted = [...agg].sort((a,b)=>toNumber(b.product_clicks)-toNumber(a.product_clicks));
+  const top3 = sorted.slice(0,3);
+  const lines = top3.map((r,i)=>`${i+1}位: ${r.elapsed}分（${toNumber(r.product_clicks).toLocaleString()}件）`).join('、');
+  return `商品クリックの上位3分間は <strong>${lines}</strong>。
+これらの時間帯における配信の内容・演出に注目し、再現性の高い施策として取り入れることが重要です。
+視聴者が商品に興味を持つタイミングを把握し、その直前の視覚・音声演出を強化することで、クリック率の向上が見込めます。`;
+}
+
+function autoInsight_chat(agg) {
+  if (!agg.length) return '';
+  if (!hasData(agg,'chats')) return 'チャット数のデータが含まれていませんでした。指標データに「チャット数」または「コメント数」列を追加すると、より詳細な分析が可能です。';
+  const sorted = [...agg].sort((a,b)=>toNumber(b.chats)-toNumber(a.chats));
+  const top3 = sorted.slice(0,3);
+  const lines = top3.map((r,i)=>`${i+1}位: ${r.elapsed}分（${toNumber(r.chats).toLocaleString()}件）`).join('、');
+  return `チャットが最も活発だった時間帯は <strong>${lines}</strong>。
+チャットの急増は視聴者が積極的に反応しているサインであり、この瞬間に商品訴求を強化することで購買転換率が高まります。
+「コメントに答えながら商品を紹介する」形式は視聴者との距離感を縮め、エンゲージメント全体の底上げにつながります。`;
+}
+
+function autoInsight_likes(agg) {
+  if (!agg.length) return '';
+  if (!hasData(agg,'likes')) return 'いいね数のデータが含まれていませんでした。指標データに「いいね数」列を追加すると、より詳細な分析が可能です。';
+  const sorted = [...agg].sort((a,b)=>toNumber(b.likes)-toNumber(a.likes));
+  const top3 = sorted.slice(0,3);
+  const lines = top3.map((r,i)=>`${i+1}位: ${r.elapsed}分（${toNumber(r.likes).toLocaleString()}件）`).join('、');
+  return `いいね数が集中した時間帯は <strong>${lines}</strong>。
+感情的な共感が生まれているこれらのタイミングは、視聴者が内容に強く反応している瞬間であり、購買意欲も高まりやすい時間帯です。
+「いいねが多いタイミング直後に商品のベネフィットを再度訴求する」ことで、関心喚起から購買行動への転換を促進できます。`;
+}
+
+/* ========================================================
+   MAIN REPORT BUILDER
+   ======================================================== */
+function buildReport(agg, corrData, textSections, noComment, commentRows) {
+  destroyCharts();
+  const report = document.getElementById('report');
+
+  let html = '';
+
+  // ─── Stats Summary ───
+  html += `<div class="card">${buildStatsSummary(agg)}</div>`;
+
+  // ============================================================
+  // SECTION 1 – 各指標の考察とアドバイス_1（単一指標分析）
+  // ============================================================
+  html += `
+    <div class="section-header">
+      <div class="icon-badge purple"><i class="fas fa-chart-bar"></i></div>
+      <h2>各指標の考察とアドバイス_1（単一指標分析）</h2>
+    </div>`;
+
+  // Point 1: Composite chart
+  html += `
+    <div class="card">
+      <div class="card-title"><i class="fas fa-chart-mixed"></i> 分析ポイント① 時系列グラフ・詳細分析</div>
+      <div class="chart-wrap"><canvas id="chart1"></canvas></div>
+      <div class="insight-block">
+        <h4><i class="fas fa-lightbulb"></i> 考察</h4>
+        <p>${autoInsight_single(agg)}</p>
+      </div>
+      ${textSections.single[0] ? makeInsightAdviceHTML(textSections.single[0], true) : ''}
+    </div>`;
+
+  // ============================================================
+  // SECTION 2 – 相関の強い組み合わせ
+  // ============================================================
+  html += `
+    <hr class="divider">
+    <div class="section-header">
+      <div class="icon-badge teal"><i class="fas fa-diagram-project"></i></div>
+      <h2>相関の強い組み合わせ</h2>
+    </div>`;
+
+  // Heatmap
+  html += `
+    <div class="card">
+      <div class="card-title"><i class="fas fa-th"></i> 指標間相関ヒートマップ（同時視聴ユーザー数を除く）</div>
+      ${renderHeatmap(corrData)}
+    </div>`;
+
+  // Top3
+  const top3 = getTop3Correlations(corrData);
+  html += `<div class="corr-cards">`;
+  top3.forEach((p,i) => {
+    html += `
+      <div class="corr-card">
+        <div class="pair">🔗 ${p.pairLabel}</div>
+        <span class="corr-score ${p.isPos?'pos':'neg'}">${p.isPos?'正の相関':'負の相関'} r=${p.value.toFixed(2)}</span>
+        <p>${p.desc}</p>
+      </div>`;
+  });
+  html += `</div>`;
+
+  if (textSections.heatmap) {
+    html += `<div class="card" style="margin-top:20px">${makeInsightAdviceHTML(textSections.heatmap)}</div>`;
+  }
+
+  // ============================================================
+  // SECTION 3 – 各指標の考察とアドバイス_2（複数指標分析）
+  // ============================================================
+  html += `
+    <hr class="divider">
+    <div class="section-header">
+      <div class="icon-badge amber"><i class="fas fa-layer-group"></i></div>
+      <h2>各指標の考察とアドバイス_2（複数指標分析）</h2>
+    </div>`;
+
+  // Point 2: Product clicks
+  html += `
+    <div class="card">
+      <div class="card-title"><i class="fas fa-mouse-pointer" style="color:${PALETTE.product_clicks}"></i> 分析ポイント② 商品クリック数の推移</div>
+      ${hasData(agg,'product_clicks') ? '<div class="chart-wrap-sm"><canvas id="chart2"></canvas></div>' : '<div class="no-comment-notice"><i class="fas fa-info-circle"></i> 商品クリック数データなし（グラフを省略）</div>'}
+      <div class="insight-block">
+        <h4><i class="fas fa-lightbulb"></i> 考察</h4>
+        <p>${autoInsight_productClick(agg)}</p>
+      </div>
+      <div class="advice-block">
+        <h4><i class="fas fa-bullseye"></i> アドバイス</h4>
+        <p>商品クリックのピーク時間帯直前の演出（商品の見せ方・声のトーン・テロップ表示など）を記録・分析し、再現性の高いシナリオとして次の配信に活かしましょう。商品クリック後5分以内にカート誘導トークを入れることで、購買転換率が向上します。</p>
+      </div>
+      ${textSections.multi[0] ? makeInsightAdviceHTML(textSections.multi[0]) : ''}
+    </div>`;
+
+  // Point 3: Chats
+  html += `
+    <div class="card">
+      <div class="card-title"><i class="fas fa-comment-dots" style="color:${PALETTE.chats}"></i> 分析ポイント③ チャット数の推移</div>
+      ${hasData(agg,'chats') ? '<div class="chart-wrap-sm"><canvas id="chart3"></canvas></div>' : '<div class="no-comment-notice"><i class="fas fa-info-circle"></i> チャット数データなし（グラフを省略）</div>'}
+      <div class="insight-block">
+        <h4><i class="fas fa-lightbulb"></i> 考察</h4>
+        <p>${autoInsight_chat(agg)}</p>
+      </div>
+      <div class="advice-block">
+        <h4><i class="fas fa-bullseye"></i> アドバイス</h4>
+        <p>チャットが活発な時間帯を「視聴者が最も関与している瞬間」と捉え、その直後に商品のベネフィット訴求や期間限定オファーを提示することで、購買転換率を高めることができます。コメントへの返答を通じた双方向コミュニケーションが信頼構築と購買動機を強化します。</p>
+      </div>
+      ${textSections.multi[1] ? makeInsightAdviceHTML(textSections.multi[1]) : ''}
+    </div>`;
+
+  // No comment notice
+  if (noComment) {
+    html += `
+      <div class="no-comment-notice">
+        <i class="fas fa-info-circle"></i>
+        コメントデータが未提供のため、チャット分析はエンゲージメント指標データのみに基づいています。
+        コメントデータをアップロードすると、視聴者の発言内容と指標変動の関連分析が可能になります。
+      </div>`;
+  }
+
+  // Point 4: Likes
+  html += `
+    <div class="card" style="margin-top:24px">
+      <div class="card-title"><i class="fas fa-heart" style="color:${PALETTE.likes}"></i> 分析ポイント④ いいね数の推移</div>
+      ${hasData(agg,'likes') ? '<div class="chart-wrap-sm"><canvas id="chart4"></canvas></div>' : '<div class="no-comment-notice"><i class="fas fa-info-circle"></i> いいね数データなし（グラフを省略）</div>'}
+      <div class="insight-block">
+        <h4><i class="fas fa-lightbulb"></i> 考察</h4>
+        <p>${autoInsight_likes(agg)}</p>
+      </div>
+      <div class="advice-block">
+        <h4><i class="fas fa-bullseye"></i> アドバイス</h4>
+        <p>いいね数のピークは視聴者の感情的共感が最も高まっている瞬間です。この時間帯に「いいね＝この商品が気になる」という文脈を設け、即座に商品ページへの誘導や購入特典の案内を行うことで、感情的関心を購買行動に転換できます。</p>
+      </div>
+      ${textSections.multi[2] ? makeInsightAdviceHTML(textSections.multi[2]) : ''}
+    </div>`;
+
+  // Set report HTML
+  report.innerHTML = html;
+  report.style.display = 'block';
+
+  // Build charts after DOM update (only if canvas elements exist)
+  setTimeout(() => {
+    if (document.getElementById('chart1')) buildChart1('chart1', agg);
+    if (document.getElementById('chart2') && hasData(agg,'product_clicks'))
+      buildLineChart('chart2', agg, 'product_clicks', '商品クリック数', PALETTE.product_clicks);
+    if (document.getElementById('chart3') && hasData(agg,'chats'))
+      buildLineChart('chart3', agg, 'chats', 'チャット数', PALETTE.chats);
+    if (document.getElementById('chart4') && hasData(agg,'likes'))
+      buildLineChart('chart4', agg, 'likes', 'いいね数', PALETTE.likes);
+  }, 50);
+}
+
+/* ========================================================
+   EVENT HANDLERS
+   ======================================================== */
+
+// Toggle comment upload area
+document.getElementById('no-comment-chk').addEventListener('change', function() {
+  const area = document.getElementById('comment-upload-area');
+  if (this.checked) {
+    area.style.opacity = '0.4';
+    area.style.pointerEvents = 'none';
+    document.getElementById('comment-file').value = '';
+  } else {
+    area.style.opacity = '1';
+    area.style.pointerEvents = 'auto';
+  }
+});
+
+// Analyze button
+document.getElementById('analyze-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('analyze-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
+  hideStatus();
+
+  try {
+    // 1. Metrics file (required)
+    const metricsInput = document.getElementById('metrics-file');
+    if (!metricsInput.files.length) {
+      throw new Error('指標データファイルをアップロードしてください（必須）。');
+    }
+
+    showStatus('指標データを読み込み中...', 'info');
+    let metricsRows = await parseFile(metricsInput.files[0]);
+
+    // Validate we got at least some rows
+    if (!metricsRows.length) {
+      // Try raw parse to give user column info
+      let rawColInfo = '';
+      try {
+        const ab2 = await readFileAsAB(metricsInput.files[0]);
+        const wb2 = XLSX.read(ab2, { type:'array' });
+        const sh2 = wb2.Sheets[wb2.SheetNames[0]];
+        const rawRows = XLSX.utils.sheet_to_json(sh2, { defval:null, raw:false });
+        if (rawRows.length) {
+          rawColInfo = '\n検出された列名: ' + Object.keys(rawRows[0]).join('、');
+        } else {
+          rawColInfo = '\nシートにデータが見つかりませんでした。ファイルが空でないか確認してください。';
+        }
+      } catch(e2) {}
+      throw new Error('指標データファイルからデータを読み込めませんでした。' + rawColInfo +
+        '\n\n対応列名例：経過時間、同時視聴ユーザー数、いいね数、シェア数、チャット数、商品クリック数、カート追加クリック数');
+    }
+
+    // Warn (not error) if elapsed wasn't found — we already fell back to row index
+    const sampleKeys = Object.keys(metricsRows[0]);
+    const detectedMetrics = Object.keys(AVAILABLE_METRICS).filter(k => AVAILABLE_METRICS[k]);
+    if (!AVAILABLE_METRICS['elapsed']) {
+      showStatus(`⚠️ 「経過時間」列が検出できなかったため、行番号を時間軸として使用します。検出された指標: ${detectedMetrics.join('、')}`, 'info');
+      await new Promise(r => setTimeout(r, 1500));
+    } else if (detectedMetrics.length < 4) {
+      showStatus(`ℹ️ 一部の指標列が見つかりませんでした（検出済み: ${detectedMetrics.join('、')}）。存在するデータのみで分析を続行します。`, 'info');
+      await new Promise(r => setTimeout(r, 1500));
+    }
+
+    // 2. Comment file (optional)
+    const noComment = document.getElementById('no-comment-chk').checked;
+    let commentRows = [];
+    if (!noComment) {
+      const commentInput = document.getElementById('comment-file');
+      if (commentInput.files.length) {
+        showStatus('コメントデータを読み込み中...', 'info');
+        try {
+          commentRows = await parseFile(commentInput.files[0]);
+        } catch(e) {
+          showStatus('コメントデータの読み込みに失敗しました。スキップして続行します。', 'info');
+          commentRows = [];
+        }
+      }
+    }
+
+    // 3. Analysis text
+    const rawText = document.getElementById('analysis-text').value;
+
+    showStatus('データを分析中...', 'info');
+
+    // Aggregate
+    const agg = aggregateByMinute(metricsRows);
+    if (!agg.length) throw new Error('有効な指標データ行が見つかりませんでした。');
+
+    // Correlations
+    const corrData = computeAllCorrelations(agg);
+
+    // Text sections
+    const textSections = extractTextSections(rawText);
+
+    hideStatus();
+
+    // Build report
+    buildReport(agg, corrData, textSections, noComment, commentRows);
+
+    // Scroll to report
+    setTimeout(() => {
+      document.getElementById('report').scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 200);
+
+  } catch(err) {
+    console.error(err);
+    showStatus('❌ エラー: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-chart-bar"></i> 分析レポートを生成する';
+  }
+});
+</script>
+</body>
+</html>
